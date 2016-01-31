@@ -9,8 +9,8 @@ android {
     buildToolsVersion "23.0.2"
     compileOptions {
         encoding "UTF-8"
-        sourceCompatibility JavaVersion.VERSION_1_7
-        targetCompatibility JavaVersion.VERSION_1_7
+        sourceCompatibility JavaVersion.VERSION_1_6
+        targetCompatibility JavaVersion.VERSION_1_6
     }
     defaultConfig {
         minSdkVersion 16
@@ -29,15 +29,14 @@ android {
         exclude 'META-INF/NOTICE.txt'
         exclude 'META-INF/LICENSE'
         exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/INDEX.LIST'
     }
     dexOptions {
         incremental true
         javaMaxHeapSize "4g"
     }
-    android {
-        lintOptions {
-            disable 'InvalidPackage'
-        }
+    lintOptions {
+        disable 'InvalidPackage'
     }
     allprojects {
         gradle.projectsEvaluated {
@@ -46,6 +45,9 @@ android {
             }
         }
     }
+//    testOptions {
+//        unitTests.returnDefaultValues = true
+//    }
 }
 
 uploadArchives {
@@ -60,21 +62,30 @@ uploadArchives {
 }
 
 dependencies {
-    compile fileTree(include: ['*.jar'], dir: 'libs')
-    testCompile 'junit:junit:4.12'
+    //compile fileTree(include: ['*.jar'], dir: 'libs')
     //compile 'com.android.support:appcompat-v7:23.1.1'
+    //compile 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-base:2.7.0'
+    //compile 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.7.0'
+    compile files('libs/volley-1.0-SNAPSHOT.jar')
+
+    androidTestCompile 'junit:junit:4.12'
+    androidTestCompile 'org.mockito:mockito-core:1.10.8'
+    //testCompile 'org.robolectric:robolectric:3.0'
+    //    testCompile 'org.apache.httpcomponents:httpclient:4.5.1'
+    //    testCompile 'org.hamcrest:hamcrest-core:1.3'
+    //    testCompile 'org.json:json:20090211'
+    compile 'com.android.support:support-v4:23.1.1'
     compile 'com.fasterxml.jackson.core:jackson-core:2.7.0'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.7.0'
     compile 'com.fasterxml.jackson.core:jackson-annotations:2.7.0'
-    //compile 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-base:2.7.0'
-    //compile 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.7.0'
     compile 'org.slf4j:jcl-over-slf4j:1.7.13'
     compile 'org.slf4j:slf4j-api:1.7.13'
     compile 'org.slf4j:jul-to-slf4j:1.7.13'
     compile 'org.slf4j:log4j-over-slf4j:1.7.13'
     compile 'org.apache.commons:commons-lang3:3.4'
     compile 'org.hibernate:hibernate-validator:5.2.2.Final'
-    compile files('libs/volley-1.0-SNAPSHOT.jar')
     compile 'com.noveogroup.android:android-logger:1.3.6'
-    compile 'com.amazonaws:aws-android-sdk-core:2.2.10'
+//    compile 'com.amazonaws:aws-android-sdk-core:2.2.10'
+    compile 'com.amazonaws:aws-java-sdk-core:1.10.49'
+    compile 'com.android.support:appcompat-v7:23.1.1'
 }

@@ -22,7 +22,7 @@ import android.content.SharedPreferences;
 import android.util.Base64;
 
 import com.erudika.para.core.ParaObject;
-import com.erudika.para.core.ParaObjectImpl;
+import com.erudika.para.core.Sysprop;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonValue;
@@ -235,6 +235,25 @@ public final class ClientUtils {
     }
 
     /**
+     * Checks if a class is primitive, String or a primitive wrapper.
+     *
+     * @param clazz a class
+     * @return true if primitive or wrapper
+     */
+    public static boolean isBasicType(Class<?> clazz) {
+        return (clazz == null) ? false : (clazz.isPrimitive()
+                || clazz.equals(String.class)
+                || clazz.equals(Long.class)
+                || clazz.equals(Integer.class)
+                || clazz.equals(Boolean.class)
+                || clazz.equals(Byte.class)
+                || clazz.equals(Short.class)
+                || clazz.equals(Float.class)
+                || clazz.equals(Double.class)
+                || clazz.equals(Character.class));
+    }
+
+    /**
      * Populates a new ParaObject with data from a map.
      * @param data some data
      * @param <P> object type
@@ -246,104 +265,110 @@ public final class ClientUtils {
             return null;
         }
         if (type == null) {
-            type = (Class<P>) ParaObjectImpl.class;
+            type = (Class<P>) Sysprop.class;
         }
         return getJsonMapper().convertValue(data, type);
     }
 
     public static void savePref(String key, String value, Context ctx) {
-        SharedPreferences prefs = ctx.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = prefs.edit();
-        if (key != null && value != null) {
-            editor.putString(key, value);
+        if (ctx != null) {
+            SharedPreferences prefs = ctx.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = prefs.edit();
+            if (key != null && value != null) {
+                editor.putString(key, value);
+            }
+            editor.commit();
         }
-        editor.commit();
     }
 
     public static String loadPref(String key, Context ctx) {
-        SharedPreferences prefs = ctx.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
-        return prefs.getString(key, null);
-
+        if (ctx != null) {
+            SharedPreferences prefs = ctx.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
+            return prefs.getString(key, null);
+        }
+        return null;
     }
 
     public static void clearPref(String key, Context ctx) {
-        SharedPreferences prefs = ctx.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
-        prefs.edit().remove(key).commit();
-    }
-
-    /**
-     * Represents HTTP methods allowed to be executed on a specific resource/type.
-     * For example; the 'books' type can have a permission '{ "*" : ["GET"] }' which means
-     * "give read-only permissions to everyone". It is backed by a map of resource names
-     * (object types) to a set of allowed HTTP methods.
-     */
-    public static enum AllowedMethods {
-
-        /**
-         * Allows all HTTP methods (full access)
-         */
-        READ_WRITE,
-        /**
-         * Allows GET method only
-         */
-        GET,
-        /**
-         * Allows POST method only
-         */
-        POST,
-        /**
-         * Allows PUT method only
-         */
-        PUT,
-        /**
-         * ALlows PATCH method only
-         */
-        PATCH,
-        /**
-         * Allows DELETE method only
-         */
-        DELETE,
-        /**
-         * Allows read methods: GET, same as {@link #GET}
-         */
-        READ_ONLY,
-        /**
-         * Allows write methods: POST, PUT, PATCH and DELETE
-         */
-        WRITE_ONLY;
-
-        public static final EnumSet<AllowedMethods> ALL_VALUES = EnumSet.of(GET, POST, PUT, PATCH, DELETE);
-        public static final EnumSet<AllowedMethods> READ_AND_WRITE = EnumSet.of(READ_WRITE);
-        public static final EnumSet<AllowedMethods> READ = EnumSet.of(GET);
-        public static final EnumSet<AllowedMethods> WRITE = EnumSet.of(POST, PUT, PATCH, DELETE);
-        public static final EnumSet<AllowedMethods> ALL_EXCEPT_DELETE = EnumSet.of(GET, POST, PUT, PATCH);
-
-        @JsonCreator
-        public static AllowedMethods fromString(String value) {
-            if (ALLOW_ALL.equals(value)) {
-                return READ_WRITE;
-            } else {
-                try {
-                    return valueOf(value.toUpperCase());
-                } catch (Exception e) {
-                    return null;
-                }
-            }
-        }
-
-        @Override
-        @JsonValue
-        public String toString() {
-            switch (this) {
-                case READ_WRITE:
-                    return ALLOW_ALL;
-                case READ_ONLY:
-                    return GET.name();
-                case WRITE_ONLY:
-                    return "w";
-                default:
-                    return this.name();
-            }
+        if (ctx != null) {
+            SharedPreferences prefs = ctx.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
+            prefs.edit().remove(key).commit();
         }
     }
+//
+//    /**
+//     * Represents HTTP methods allowed to be executed on a specific resource/type.
+//     * For example; the 'books' type can have a permission '{ "*" : ["GET"] }' which means
+//     * "give read-only permissions to everyone". It is backed by a map of resource names
+//     * (object types) to a set of allowed HTTP methods.
+//     */
+//    public static enum AllowedMethods {
+//
+//        /**
+//         * Allows all HTTP methods (full access)
+//         */
+//        READ_WRITE,
+//        /**
+//         * Allows GET method only
+//         */
+//        GET,
+//        /**
+//         * Allows POST method only
+//         */
+//        POST,
+//        /**
+//         * Allows PUT method only
+//         */
+//        PUT,
+//        /**
+//         * ALlows PATCH method only
+//         */
+//        PATCH,
+//        /**
+//         * Allows DELETE method only
+//         */
+//        DELETE,
+//        /**
+//         * Allows read methods: GET, same as {@link #GET}
+//         */
+//        READ_ONLY,
+//        /**
+//         * Allows write methods: POST, PUT, PATCH and DELETE
+//         */
+//        WRITE_ONLY;
+//
+//        public static final EnumSet<AllowedMethods> ALL_VALUES = EnumSet.of(GET, POST, PUT, PATCH, DELETE);
+//        public static final EnumSet<AllowedMethods> READ_AND_WRITE = EnumSet.of(READ_WRITE);
+//        public static final EnumSet<AllowedMethods> READ = EnumSet.of(GET);
+//        public static final EnumSet<AllowedMethods> WRITE = EnumSet.of(POST, PUT, PATCH, DELETE);
+//        public static final EnumSet<AllowedMethods> ALL_EXCEPT_DELETE = EnumSet.of(GET, POST, PUT, PATCH);
+//
+//        @JsonCreator
+//        public static AllowedMethods fromString(String value) {
+//            if (ALLOW_ALL.equals(value)) {
+//                return READ_WRITE;
+//            } else {
+//                try {
+//                    return valueOf(value.toUpperCase());
+//                } catch (Exception e) {
+//                    return null;
+//                }
+//            }
+//        }
+//
+//        @Override
+//        @JsonValue
+//        public String toString() {
+//            switch (this) {
+//                case READ_WRITE:
+//                    return ALLOW_ALL;
+//                case READ_ONLY:
+//                    return GET.name();
+//                case WRITE_ONLY:
+//                    return "w";
+//                default:
+//                    return this.name();
+//            }
+//        }
+//    }
 }

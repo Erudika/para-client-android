@@ -15,7 +15,7 @@
  *
  * For issues and patches go to: https://github.com/erudika
  */
-package com.erudika.para.client;
+package com.erudika.para.core;
 
 import com.erudika.para.client.utils.ClientUtils;
 import com.erudika.para.client.utils.Email;

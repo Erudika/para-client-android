@@ -15,7 +15,7 @@
  *
  * For issues and patches go to: https://github.com/erudika
  */
-package com.erudika.para.client;
+package com.erudika.para.client.utils;
 
 /**
  * This class stores pagination data. It limits the results for queries in the DAO

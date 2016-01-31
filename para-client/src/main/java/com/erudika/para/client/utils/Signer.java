@@ -27,9 +27,10 @@ import com.android.volley.NetworkResponse;
 import com.android.volley.ParseError;
 import com.android.volley.Request;
 import com.android.volley.Response;
+import com.android.volley.VolleyError;
 import com.android.volley.toolbox.HttpHeaderParser;
+import com.erudika.para.core.Constraint;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,6 +38,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -54,7 +56,8 @@ import org.slf4j.LoggerFactory;
 public final class Signer extends AWS4Signer {
 
     private static final Logger logger = LoggerFactory.getLogger(Signer.class);
-    private static final SimpleDateFormat timeFormatter = new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
+    private static final SimpleDateFormat timeFormatter =
+            new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
 
     private static final String PARA = "para";
 
@@ -82,7 +85,8 @@ public final class Signer extends AWS4Signer {
                     Map<String, String> headers, Map<String, String> params, InputStream entity,
                     String accessKey, String secretKey) {
 
-        DefaultRequest<?> req = buildAWSRequest(httpMethod, endpoint, resourcePath, headers, params, entity);
+        DefaultRequest<?> req = buildAWSRequest(httpMethod, endpoint, resourcePath,
+                headers, params, entity);
         sign(req, accessKey, secretKey);
         return req.getHeaders();
     }
@@ -106,9 +110,9 @@ public final class Signer extends AWS4Signer {
     }
 
     private DefaultRequest<?> buildAWSRequest(int httpMethod, String endpoint, String resourcePath,
-                                       Map<String, String> headers, Map<String, String> params, InputStream entity) {
-        DefaultRequest<AmazonWebServiceRequest> r = new DefaultRequest<AmazonWebServiceRequest>(PARA);
+                       Map<String, String> headers, Map<String, String> params, InputStream entity) {
 
+        DefaultRequest<AmazonWebServiceRequest> r = new DefaultRequest<AmazonWebServiceRequest>(PARA);
         String method;
         switch (httpMethod) {
             case Request.Method.GET: method = "GET"; break;
@@ -180,7 +184,7 @@ public final class Signer extends AWS4Signer {
     @SuppressWarnings("unchecked")
     public <T> ParaRequest<T> invokeSignedRequest(String accessKey, String secretKey,
             int httpMethod, String endpointURL, String reqPath,
-            Map<String, String> headers, Map<String, Object> params, T body, Class<T> type,
+            Map<String, String> headers, Map<String, Object> params, T body, Class<?> type,
             Response.Listener<?> success, Response.ErrorListener error) {
 
         String url = endpointURL + reqPath;
@@ -192,7 +196,6 @@ public final class Signer extends AWS4Signer {
             type = (Class<T>) ((body != null) ? body.getClass() : Map.class);
         }
 
-        //WebTarget target = apiClient.target(endpointURL).path(reqPath);
         Map<String, String> signedHeaders = null;
         if (!isJWT) {
             signedHeaders = signRequest(accessKey, secretKey, httpMethod, endpointURL, reqPath,
@@ -204,13 +207,16 @@ public final class Signer extends AWS4Signer {
         }
 
         if (params != null) {
-            Map<String, String> paramMap = new HashMap<String, String>();
+            Map<String, List<String>> paramMap = new HashMap<String, List<String>>();
             for (Map.Entry<String, Object> param : params.entrySet()) {
                 String key = param.getKey();
                 Object value = param.getValue();
-
-                if (value != null && !(value instanceof List)) {
-                    paramMap.put(key, value.toString());
+                if (value != null) {
+                    if (value instanceof List && !((List) value).isEmpty()) {
+                        paramMap.put(key, ((List) value));
+                    } else {
+                        paramMap.put(key, Collections.singletonList(value.toString()));
+                    }
                 }
             }
             queryString = super.getCanonicalizedQueryString(paramMap);
@@ -218,24 +224,6 @@ public final class Signer extends AWS4Signer {
                 url += "?" + queryString;
             }
         }
-
-        //Invocation.Builder builder = target.request(MediaType.APPLICATION_JSON);
-
-
-//        if (headers != null) {
-//            for (Map.Entry<String, String> header : headers.entrySet()) {
-//                builder.header(header.getKey(), header.getValue());
-//            }
-//        }
-//
-//        Entity<?> jsonPayload = null;
-//        if (jsonEntity != null && jsonEntity.length > 0) {
-//            try {
-//                jsonPayload = Entity.json(new String(jsonEntity, "UTF-8"));
-//            } catch (IOException ex) {
-//                logger.error(null, ex);
-//            }
-//        }
 
         if (isJWT) {
             headers.put("Authorization", secretKey);
@@ -245,12 +233,6 @@ public final class Signer extends AWS4Signer {
         }
 
         return new ParaRequest(httpMethod, url, headers, entity, type, success, error);
-
-//        if (jsonPayload != null) {
-//            return builder.method(httpMethod, jsonPayload);
-//        } else {
-//            return builder.method(httpMethod);
-//        }
     }
 
     /**
@@ -298,7 +280,10 @@ public final class Signer extends AWS4Signer {
         }
 
         if (jsonEntity != null && jsonEntity.length > 0) {
-            in = new BufferedInputStream(new ByteArrayInputStream(jsonEntity));
+            // For some reason AWSSDK for Android doesn't like
+            // ByteArrayInputStream to be wrapped in BufferedInputStream
+            // and throws "IOException: unable to reset stream..."
+            in = new ByteArrayInputStream(jsonEntity);
         }
 
         return sign(httpMethod, endpointURL, reqPath, headers, sigParams, in, accessKey, secretKey);
@@ -306,13 +291,13 @@ public final class Signer extends AWS4Signer {
 
     private byte[] jsonBytes(Object o) {
         if (o == null) {
-            return null;
+            return new byte[0];
         }
         try {
-            return ClientUtils.getJsonMapper().writeValueAsBytes(o);
-        } catch (JsonProcessingException e) {
-            logger.error(null, e);
-            return null;
+            return ClientUtils.getJsonWriterNoIdent().writeValueAsBytes(o);
+        } catch (Exception e) {
+            logger.error("Object could not be converted to JSON byte[]", e);
+            return new byte[0];
         }
     }
 
@@ -320,6 +305,7 @@ public final class Signer extends AWS4Signer {
 
         private final Map<String, String> headers;
         private final Response.Listener<T> listener;
+        private final Response.ErrorListener errorListener;
         private final byte[] body;
         private final Class<T> type;
 
@@ -338,6 +324,7 @@ public final class Signer extends AWS4Signer {
             super(method, url, errorListener);
             this.headers = headers;
             this.listener = successListener;
+            this.errorListener = errorListener;
             this.body = jsonEntity;
             this.type = entityType;
         }
@@ -355,14 +342,29 @@ public final class Signer extends AWS4Signer {
         }
 
         @Override
+        public void deliverError(VolleyError error) {
+            if (errorListener != null) {
+                errorListener.onErrorResponse(error);
+            }
+        }
+
+        @Override
         @SuppressWarnings("unchecked")
         protected Response<T> parseNetworkResponse(NetworkResponse response) {
             try {
-                return Response.success((T) ClientUtils.getJsonReader(type).readValue(response.data),
-                    HttpHeaderParser.parseCacheHeaders(response));
-            } catch (UnsupportedEncodingException e) {
-                return Response.error(new ParseError(e));
-            } catch (IOException e) {
+                if (response != null && response.data != null && response.data.length > 0) {
+                    if (ClientUtils.isBasicType(type)) {
+                        return (Response<T>) Response.success(new String(response.data, "UTF-8"),
+                                HttpHeaderParser.parseCacheHeaders(response));
+                    } else {
+                        return Response.success((T) ClientUtils.getJsonReader(type).
+                                readValue(response.data), HttpHeaderParser.parseCacheHeaders(response));
+                    }
+                } else {
+                    return Response.success(null, HttpHeaderParser.parseCacheHeaders(response));
+                }
+            } catch (Exception e) {
+                logger.error("JSON parsing error", e);
                 return Response.error(new ParseError(e));
             }
         }

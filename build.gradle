@@ -3,6 +3,7 @@ apply plugin: 'maven'
 
 buildscript {
     repositories {
+        mavenCentral()
         mavenLocal()
         jcenter()
     }
@@ -16,6 +17,7 @@ buildscript {
 
 allprojects {
     repositories {
+        mavenCentral()
         mavenLocal()
         jcenter()
     }

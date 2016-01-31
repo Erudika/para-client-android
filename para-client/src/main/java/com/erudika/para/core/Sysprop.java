@@ -32,7 +32,7 @@ import org.apache.commons.lang3.StringUtils;
  * It is essentially a map of keys and values.
  * @author Alex Bogdanovski [alex@erudika.com]
  */
-public class ParaObjectImpl implements ParaObject {
+public class Sysprop implements ParaObject {
 
     private String id;
     private Long timestamp;
@@ -50,7 +50,7 @@ public class ParaObjectImpl implements ParaObject {
     /**
      * No-args constructor
      */
-    public ParaObjectImpl() {
+    public Sysprop() {
         this(null);
     }
 
@@ -58,7 +58,7 @@ public class ParaObjectImpl implements ParaObject {
      * The default constructor
      * @param id the object id
      */
-    public ParaObjectImpl(String id) {
+    public Sysprop(String id) {
         setId(id);
         setName(getName());
     }
@@ -70,7 +70,7 @@ public class ParaObjectImpl implements ParaObject {
      * @return this
      */
     @JsonAnySetter
-    public ParaObjectImpl addProperty(String name, Object value) {
+    public Sysprop addProperty(String name, Object value) {
         if (!StringUtils.isBlank(name) && value != null) {
             getProperties().put(name, value);
         }
@@ -94,7 +94,7 @@ public class ParaObjectImpl implements ParaObject {
      * @param name the key
      * @return this
      */
-    public ParaObjectImpl removeProperty(String name) {
+    public Sysprop removeProperty(String name) {
         if (!StringUtils.isBlank(name)) {
             getProperties().remove(name);
         }
@@ -240,7 +240,7 @@ public class ParaObjectImpl implements ParaObject {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        final ParaObjectImpl other = (ParaObjectImpl) obj;
+        final Sysprop other = (Sysprop) obj;
         if (getId() == null || !getId().equals(other.getId())) {
             return false;
         }
