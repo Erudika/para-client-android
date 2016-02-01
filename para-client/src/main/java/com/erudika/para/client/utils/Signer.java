@@ -308,7 +308,7 @@ public final class Signer extends AWS4Signer {
         private final Response.ErrorListener errorListener;
         private final byte[] body;
         private final Class<T> type;
-
+private String url;
         /**
          * Make an API request and return a parsed object from JSON.
          * @param url URL of the request to make
@@ -327,6 +327,8 @@ public final class Signer extends AWS4Signer {
             this.errorListener = errorListener;
             this.body = jsonEntity;
             this.type = entityType;
+
+            this.url = url;
         }
 
         @Override

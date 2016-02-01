@@ -44,13 +44,9 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 /**
- *
+ * ParaClient integration tests - execute on device!
  * @author Alex Bogdanovski [alex@erudika.com]
  */
-//@RunWith(MockitoJUnitRunner.class)
-//@RunWith(AndroidTestRunner.class)
-//@Config(manifest = "src/main/AndroidManifest.xml", sdk = 16)
-//@RunWith(RobolectricTestRunner.class)
 @SmallTest
 public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivity> {
 
@@ -81,7 +77,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
 
     private ParaClient pc() {
         if (pc == null) {
-            pc = new ParaClient("app:para", "WISaNRwoANIyIOOAnZRu2kz1O7h7R9Cy+yivwf1tVawSVJKLye7fHA==", ctx);
+            pc = new ParaClient("app:para", "3Ssyc7njcE5Wjj/EGeOvLd5PhIKvqwxGC28kuWXlhiOH1YwtSzvEUQ==", ctx);
             pc.setEndpoint("http://192.168.0.113:8080");
         }
         return pc;
@@ -119,7 +115,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
 
     private Sysprop t() {
         if (t == null) {
-            t = new Sysprop("test");
+            t = new Sysprop("tag:test");
             t.setType("tag");
             t.addProperty("tag", "test");
             t.addProperty("count", 3);
@@ -266,7 +262,11 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
 
         pc().create(ux, new Listener<ParaObject>() {
             public void onResponse(ParaObject ux) {
-                assertNull(ux);
+                fail("user should not be created");
+            }
+        }, new ErrorListener() {
+            public void onErrorResponse(VolleyError volleyError) {
+                assertTrue(true);
             }
         });
 
@@ -813,11 +813,11 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
                             }
                         });
 
-                        try {
-                            Thread.sleep(1000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
+//                        try {
+//                            Thread.sleep(1000);
+//                        } catch (InterruptedException e) {
+//                            e.printStackTrace();
+//                        }
 
                         pc().getLinkedObjects(u(), "tag", null, new Listener<List<ParaObject>>() {
                             public void onResponse(List<ParaObject> res) {
@@ -862,6 +862,10 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
                         });
                     }
                 });
+            }
+        }, new ErrorListener() {
+            public void onErrorResponse(VolleyError volleyError) {
+                fail("Link test failed.");
             }
         });
     }
@@ -1237,19 +1241,19 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         });
     }
 
-    @Test
-    public void testAccessTokens() {
-        assertNull(pc().getAccessToken());
-        pc().signIn("facebook", "test_token", new Listener<Sysprop>() {
-            public void onResponse(Sysprop res) {
-                assertNull(res);
-            }
-        });
-        pc().signOut();
-        pc().revokeAllTokens(new Listener<Boolean>() {
-            public void onResponse(Boolean res) {
-                assertFalse(res);
-            }
-        });
-    }
+//    @Test
+//    public void testAccessTokens() {
+//        assertNull(pc().getAccessToken());
+//        pc().signIn("facebook", "test_token", new Listener<Sysprop>() {
+//            public void onResponse(Sysprop res) {
+//                assertNull(res);
+//            }
+//        });
+//        pc().signOut();
+//        pc().revokeAllTokens(new Listener<Boolean>() {
+//            public void onResponse(Boolean res) {
+//                assertFalse(res);
+//            }
+//        });
+//    }
 }
