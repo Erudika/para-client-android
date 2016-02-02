@@ -18,7 +18,6 @@
 package com.erudika.para.client;
 
 import android.content.Context;
-
 import com.android.volley.Request;
 import static com.android.volley.Request.Method.*;
 import com.android.volley.RequestQueue;

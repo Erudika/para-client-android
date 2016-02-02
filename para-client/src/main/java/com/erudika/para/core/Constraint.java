@@ -19,7 +19,6 @@ package com.erudika.para.core;
 
 import com.erudika.para.client.utils.ClientUtils;
 import com.erudika.para.client.utils.Email;
-
 import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.Date;

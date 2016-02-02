@@ -23,6 +23,7 @@ import android.test.ActivityInstrumentationTestCase2;
 import android.test.suitebuilder.annotation.SmallTest;
 import static com.android.volley.Response.*;
 import com.android.volley.VolleyError;
+import com.erudika.para.client.test.TestActivity;
 import com.erudika.para.client.utils.Pager;
 import com.erudika.para.core.ParaObject;
 import com.erudika.para.core.Sysprop;

@@ -1,8 +1,12 @@
 apply plugin: 'com.android.library'
-apply plugin: "maven"
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.jfrog.bintray'
+//apply plugin: "maven"
+//apply plugin: 'signing'
 
 group = "com.erudika"
-version = "1.18.0-SNAPSHOT"
+version = "1.17.0"
+def gitURL = 'git@github.com:Erudika/para-client-android.git'
 
 android {
     compileSdkVersion 23
@@ -16,7 +20,7 @@ android {
         minSdkVersion 16
         targetSdkVersion 23
         versionCode 1
-        //versionName "1.18.0-SNAPSHOT"
+        versionName "1.0"
     }
     buildTypes {
         release {
@@ -45,35 +49,14 @@ android {
             }
         }
     }
-//    testOptions {
-//        unitTests.returnDefaultValues = true
-//    }
-}
-
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            repository(url: "file:///home/alexb/.m2/repository/")
-            pom.version = '1.18.0-SNAPSHOT'
-            pom.groupId = 'com.erudika'
-            pom.artifactId = 'para-client-android'
-        }
-    }
 }
 
 dependencies {
-    //compile fileTree(include: ['*.jar'], dir: 'libs')
-    //compile 'com.android.support:appcompat-v7:23.1.1'
-    //compile 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-base:2.7.0'
-    //compile 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.7.0'
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+    compile 'com.android.support:appcompat-v7:23.1.1'
     compile files('libs/volley-1.0-SNAPSHOT.jar')
-
     androidTestCompile 'junit:junit:4.12'
     androidTestCompile 'org.mockito:mockito-core:1.10.8'
-    //testCompile 'org.robolectric:robolectric:3.0'
-    //    testCompile 'org.apache.httpcomponents:httpclient:4.5.1'
-    //    testCompile 'org.hamcrest:hamcrest-core:1.3'
-    //    testCompile 'org.json:json:20090211'
     compile 'com.android.support:support-v4:23.1.1'
     compile 'com.fasterxml.jackson.core:jackson-core:2.7.0'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.7.0'
@@ -85,7 +68,103 @@ dependencies {
     compile 'org.apache.commons:commons-lang3:3.4'
     compile 'org.hibernate:hibernate-validator:5.2.2.Final'
     compile 'com.noveogroup.android:android-logger:1.3.6'
-//    compile 'com.amazonaws:aws-android-sdk-core:2.2.10'
-    compile 'com.amazonaws:aws-java-sdk-core:1.10.49'
     compile 'com.android.support:appcompat-v7:23.1.1'
+    compile 'com.amazonaws:aws-java-sdk-core:1.10.49'
+//    compile 'com.amazonaws:aws-android-sdk-core:2.2.10'
 }
+
+//uploadArchives {
+//    repositories {
+//        mavenDeployer {
+//            repository(url: "file:///home/alexb/.m2/repository/")
+//            pom.version = '1.18.0-SNAPSHOT'
+//            pom.groupId = 'com.erudika'
+//            pom.artifactId = 'para-client-android'
+//        }
+//    }
+//}
+
+//task createPom << {
+//    pom {
+//        project {
+//            groupId 'com.erudika'
+//            artifactId 'para-client-android'
+//            version '1.17.0'
+//        }
+//    }.writeTo("pom.xml")
+//}
+
+install {
+    repositories.mavenInstaller {
+        pom {
+            project {
+                packaging 'aar'
+                name 'para-client-android'
+                description = 'Android client library for Para'
+                url 'http://www.paraio.org'
+                licenses {
+                    license {
+                        name 'The Apache Software License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id 'albogdano'
+                        name 'Alex Bogdanovski'
+                        email 'alex@erudika.com'
+                    }
+                }
+                scm {
+                    connection gitURL
+                    developerConnection gitURL
+                    url 'https://github.com/Erudika/para-client-android'
+                }
+            }
+        }
+    }
+}
+
+task sourcesJar(type: Jar) {
+    into('libs') {
+        from configurations.compile
+    }
+    from android.sourceSets.main.java.srcDirs
+    classifier = 'sources'
+}
+
+task javadoc(type: Javadoc) {
+    source = android.sourceSets.main.java.srcDirs
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives javadocJar
+    archives sourcesJar
+}
+
+Properties properties = new Properties()
+properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+bintray {
+    user = properties.getProperty("bintray.user")
+    key = properties.getProperty("bintray.apikey")
+
+    configurations = ['archives']
+    pkg {
+        userOrg = "erudika"
+        repo = "releases"
+        name = "para-client-android"
+        websiteUrl = "http://www.paraio.org"
+        vcsUrl = gitURL
+        licenses = ["Apache-2.0"]
+        publish = true
+    }
+}
+
+
