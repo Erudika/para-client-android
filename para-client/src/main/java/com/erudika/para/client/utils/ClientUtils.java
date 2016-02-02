@@ -34,7 +34,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.MessageFormat;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 /**
  * Client utilities.
@@ -44,7 +43,6 @@ public final class ClientUtils {
 
     public static final String ALLOW_ALL = "*";
     private static final String PREFS_FILE = "ParaClientPrefs";
-    private static final Pattern emailz = Pattern.compile(Email.EMAIL_PATTERN);
     private static final ObjectMapper jsonMapper = new ObjectMapper();
     private static final ObjectReader jsonReader;
     private static final ObjectWriter jsonWriter;
@@ -193,15 +191,6 @@ public final class ClientUtils {
      */
     public static boolean isValidURL(String url) {
         return toURL(url) != null;
-    }
-
-    /**
-     * Email validation
-     * @param url a URL
-     * @return true if the URL is valid
-     */
-    public static boolean isValidEmail(String url) {
-        return emailz.matcher(url).matches();
     }
 
     private static URL toURL(String url) {

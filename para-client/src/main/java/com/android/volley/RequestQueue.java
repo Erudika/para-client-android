@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * resolving from either cache or network on a worker thread, and then delivering
  * a parsed response on the main thread.
  */
+@SuppressWarnings("unchecked")
 public class RequestQueue {
 
     /** Callback interface for completed requests. */

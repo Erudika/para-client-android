@@ -3,6 +3,7 @@
     package="com.erudika.para.client">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.USE_CREDENTIALS" />
 
     <application>
         <activity android:name=".test.TestActivity"></activity>

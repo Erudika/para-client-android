@@ -19,8 +19,6 @@ package com.erudika.para.core;
 
 import java.io.Serializable;
 import java.util.List;
-import javax.validation.constraints.Size;
-import org.hibernate.validator.constraints.NotBlank;
 
 /**
  * The core domain interface. All Para objects implement it.
@@ -44,7 +42,6 @@ public interface ParaObject extends Serializable {
      * The name of the object. Can be anything.
      * @return the name. default: [type id]
      */
-    @NotBlank @Size(min = 2, max = 255)
     String getName();
 
     /**
