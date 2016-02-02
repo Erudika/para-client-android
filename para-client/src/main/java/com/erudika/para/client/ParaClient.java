@@ -22,8 +22,7 @@ import android.content.Context;
 import com.android.volley.Request;
 import static com.android.volley.Request.Method.*;
 import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.Response.Listener;
+import static com.android.volley.Response.*;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.BasicNetwork;
 import com.android.volley.toolbox.HurlStack;
@@ -35,12 +34,10 @@ import com.erudika.para.client.utils.ClientUtils;
 import com.erudika.para.core.Constraint;
 import com.erudika.para.core.ParaObject;
 import com.erudika.para.core.Sysprop;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -68,7 +65,6 @@ public final class ParaClient {
     private String tokenKey;
     private Long tokenKeyExpires;
     private Long tokenKeyNextRefresh;
-//    private Client apiClient;
     private final Signer signer = new Signer();
     private Context ctx;
 
@@ -86,15 +82,6 @@ public final class ParaClient {
         if (StringUtils.length(secretKey) < 6) {
             logger.warn("Secret key appears to be invalid. Make sure you call 'signIn()' first.");
         }
-
-//        ClientConfig clientConfig = new ClientConfig();
-//        clientConfig.register(GenericExceptionMapper.class);
-//        clientConfig.register(new JacksonJsonProvider(ClientUtils.getJsonMapper()));
-//        clientConfig.connectorProvider(new HttpUrlConnectorProvider().useSetMethodWorkaround());
-//        SSLContext sslContext = SslConfigurator.newInstance().securityProtocol("TLSv1.2").createSSLContext();
-//        apiClient = ClientBuilder.newBuilder().
-//                sslContext(sslContext).
-//                withConfig(clientConfig).build();
     }
 
     public RequestQueue getRequestQueue() {
@@ -113,22 +100,6 @@ public final class ParaClient {
     public void enqueue(Request<?> req) {
         getRequestQueue().add(req);
     }
-
-//    /**
-//     * Closes the underlying Jersey client and releases resources.
-//     */
-//    public void close() {
-//        if (apiClient != null) {
-//            apiClient.close();
-//        }
-//    }
-//    protected Client getApiClient() {
-//        return apiClient;
-//    }
-//
-//    protected void setApiClient(Client apiClient) {
-//        this.apiClient = apiClient;
-//    }
 
     /**
      * Returns the endpoint URL
@@ -227,26 +198,6 @@ public final class ParaClient {
          */
     }
 
-//    @SuppressWarnings("unchecked")
-//    private <T> T getEntity(Response<?> res, Class<?> type) {
-//        if (res != null) {
-//
-////            res.success()
-//
-//
-//            if (res.getStatus() == Response.Status.OK.getStatusCode()
-//                    || res.getStatus() == Response.Status.CREATED.getStatusCode()
-//                    || res.getStatus() == Response.Status.NOT_MODIFIED.getStatusCode()) {
-//                return res.hasEntity() ? res.readEntity((Class<T>) type) : null;
-//            } else if (res.getStatus() != Response.Status.NOT_FOUND.getStatusCode()
-//                    && res.getStatus() != Response.Status.NOT_MODIFIED.getStatusCode()
-//                    && res.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
-//            }
-//        }
-//        return null;
-//
-//    }
-
     @SuppressWarnings("unchecked")
     private <T> void fail(Listener<T> callback, Object returnValue) {
         if (callback != null) {
@@ -255,11 +206,11 @@ public final class ParaClient {
     }
 
     @SuppressWarnings("unchecked")
-    private Response.ErrorListener onError(Response.ErrorListener... error) {
+    private ErrorListener onError(ErrorListener... error) {
         if (error != null && error.length > 0) {
             return error[0];
         } else {
-            return new Response.ErrorListener() {
+            return new ErrorListener() {
                 public void onErrorResponse(VolleyError err) {
                     byte[] data = err.networkResponse != null ? err.networkResponse.data : null;
                     String msg = err.getMessage();
@@ -301,35 +252,35 @@ public final class ParaClient {
     }
 
     private void invokeGet(String resourcePath, Map<String, Object> params, Class<?> returnType,
-                           Listener<?> success, Response.ErrorListener... error) {
+                           Listener<?> success, ErrorListener... error) {
         enqueue(signer.invokeSignedRequest(accessKey, key(!JWT_PATH.equals(resourcePath)), GET,
                 getEndpoint(), getFullPath(resourcePath), null, params, null, returnType,
                 success, onError(error)));
     }
 
     private void invokePost(String resourcePath, Object entity, Class<?> returnType,
-                            Listener<?> success, Response.ErrorListener... error) {
+                            Listener<?> success, ErrorListener... error) {
         enqueue(signer.invokeSignedRequest(accessKey, key(false), POST,
                 getEndpoint(), getFullPath(resourcePath), null, null, entity, returnType,
                 success, onError(error)));
     }
 
     private void invokePut(String resourcePath, Object entity, Class<?> returnType,
-                           Listener<?> success, Response.ErrorListener... error) {
+                           Listener<?> success, ErrorListener... error) {
         enqueue(signer.invokeSignedRequest(accessKey, key(false), PUT,
                 getEndpoint(), getFullPath(resourcePath), null, null, entity, returnType,
                 success, onError(error)));
     }
 
     private void invokePatch(String resourcePath, Object entity, Class<?> returnType,
-                             Listener<?> success, Response.ErrorListener... error) {
+                             Listener<?> success, ErrorListener... error) {
         enqueue(signer.invokeSignedRequest(accessKey, key(false), PATCH,
                 getEndpoint(), getFullPath(resourcePath), null, null, entity, returnType,
                 success, onError(error)));
     }
 
     private void invokeDelete(String resourcePath, Map<String, Object> params, Class<?> returnType,
-                              Listener<?> success, Response.ErrorListener... error) {
+                              Listener<?> success, ErrorListener... error) {
         enqueue(signer.invokeSignedRequest(accessKey, key(false), DELETE,
                 getEndpoint(), getFullPath(resourcePath), null, params, null, returnType,
                 success, onError(error)));
@@ -391,7 +342,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void create(final ParaObject obj, Listener<? extends ParaObject> callback,
-                       Response.ErrorListener... error) {
+                       ErrorListener... error) {
         if (obj == null) {
             fail(callback, null);
             return;
@@ -412,7 +363,7 @@ public final class ParaClient {
      */
     public void read(Class<? extends ParaObject> type, String id,
                      Listener<? extends ParaObject> callback,
-                     Response.ErrorListener... error) {
+                     ErrorListener... error) {
         if (type == null || StringUtils.isBlank(id)) {
             fail(callback, null);
             return;
@@ -428,7 +379,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void read(String id, Listener<? extends ParaObject> callback,
-                     Response.ErrorListener... error) {
+                     ErrorListener... error) {
         if (StringUtils.isBlank(id)) {
             fail(callback, null);
             return;
@@ -443,7 +394,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void update(ParaObject obj, Listener<? extends ParaObject> callback,
-                       Response.ErrorListener... error) {
+                       ErrorListener... error) {
         if (obj == null) {
             fail(callback, null);
             return;
@@ -458,7 +409,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void delete(ParaObject obj, Listener<? extends ParaObject> callback,
-                       Response.ErrorListener... error) {
+                       ErrorListener... error) {
         if (obj == null) {
             fail(callback, null);
             return;
@@ -473,7 +424,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void createAll(List<ParaObject> objects, final Listener<List<ParaObject>> callback,
-                          Response.ErrorListener... error) {
+                          ErrorListener... error) {
         if (objects == null || objects.isEmpty() || objects.get(0) == null) {
             fail(callback, Collections.emptyList());
             return;
@@ -492,7 +443,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void readAll(List<String> keys, final Listener<List<ParaObject>> callback,
-                        Response.ErrorListener... error) {
+                        ErrorListener... error) {
         if (keys == null || keys.isEmpty()) {
             fail(callback, Collections.emptyList());
             return;
@@ -513,7 +464,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void updateAll(List<ParaObject> objects, final Listener<List<ParaObject>> callback,
-                          Response.ErrorListener... error) {
+                          ErrorListener... error) {
         if (objects == null || objects.isEmpty()) {
             fail(callback, Collections.emptyList());
             return;
@@ -532,7 +483,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void deleteAll(List<String> keys, Listener<List<ParaObject>> callback,
-                          Response.ErrorListener... error) {
+                          ErrorListener... error) {
         if (keys == null || keys.isEmpty()) {
             fail(callback, null);
             return;
@@ -551,7 +502,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void list(String type, final Pager pager, final Listener<List<ParaObject>> callback,
-                     Response.ErrorListener... error) {
+                     ErrorListener... error) {
         if (StringUtils.isBlank(type)) {
             fail(callback, Collections.emptyList());
             return;
@@ -574,7 +525,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void findById(String id, final Listener<ParaObject> callback,
-                         Response.ErrorListener... error) {
+                         ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("id", id);
         find("id", params, new Listener<Map<String, Object>>() {
@@ -592,7 +543,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void findByIds(List<String> ids, final Listener<List<ParaObject>> callback,
-                          Response.ErrorListener... error) {
+                          ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("ids", ids);
         find("ids", params, new Listener<Map<String, Object>>() {
@@ -615,7 +566,7 @@ public final class ParaClient {
      */
     public void findNearby(String type, String query, int radius, double lat, double lng,
                            final Pager pager, final Listener<List<ParaObject>> callback,
-                           Response.ErrorListener... error) {
+                           ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("latlng", lat + "," + lng);
         params.put("radius", Integer.toString(radius));
@@ -640,7 +591,7 @@ public final class ParaClient {
      */
     public void findPrefix(String type, String field, String prefix, final Pager pager,
                            final Listener<List<ParaObject>> callback,
-                           Response.ErrorListener... error) {
+                           ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("field", field);
         params.put("prefix", prefix);
@@ -663,7 +614,7 @@ public final class ParaClient {
      */
     public void findQuery(String type, String query, final Pager pager,
                           final Listener<List<ParaObject>> callback,
-                          Response.ErrorListener... error) {
+                          ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("q", query);
         params.put("type", type);
@@ -688,7 +639,7 @@ public final class ParaClient {
      */
     public void findSimilar(String type, String filterKey, String[] fields, String liketext,
                             final Pager pager, final Listener<List<ParaObject>> callback,
-                            Response.ErrorListener... error) {
+                            ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("fields", fields == null ? null : Arrays.asList(fields));
         params.put("filterid", filterKey);
@@ -712,7 +663,7 @@ public final class ParaClient {
      */
     public void findTagged(String type, String[] tags, final Pager pager,
                            final Listener<List<ParaObject>> callback,
-                           Response.ErrorListener... error) {
+                           ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("tags", tags == null ? null : Arrays.asList(tags));
         params.put("type", type);
@@ -733,7 +684,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void findTags(String keyword, Pager pager, Listener<List<ParaObject>> callback,
-                         Response.ErrorListener... error) {
+                         ErrorListener... error) {
         keyword = (keyword == null) ? "*" : keyword.concat("*");
         findWildcard("tag", "tag", keyword, pager, callback, error);
     }
@@ -749,7 +700,7 @@ public final class ParaClient {
      */
     public void findTermInList(String type, String field, List<String> terms,
                                final Pager pager, final Listener<List<ParaObject>> callback,
-                               Response.ErrorListener... error) {
+                               ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("field", field);
         params.put("terms", terms);
@@ -773,7 +724,7 @@ public final class ParaClient {
      */
     public void findTerms(String type, Map<String, ?> terms, boolean matchAll,
                           final Pager pager, final Listener<List<ParaObject>> callback,
-                          Response.ErrorListener... error) {
+                          ErrorListener... error) {
         if (terms == null) {
             fail(callback, Collections.emptyList());
             return;
@@ -811,7 +762,7 @@ public final class ParaClient {
      */
     public void findWildcard(String type, String field, String wildcard,
                              final Pager pager, final Listener<List<ParaObject>> callback,
-                             Response.ErrorListener... error) {
+                             ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("field", field);
         params.put("q", wildcard);
@@ -831,7 +782,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void getCount(String type, final Listener<Long> callback,
-                         Response.ErrorListener... error) {
+                         ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("type", type);
         final Pager pager = new Pager();
@@ -851,7 +802,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void getCount(String type, Map<String, ?> terms, final Listener<Long> callback,
-                         Response.ErrorListener... error) {
+                         ErrorListener... error) {
         if (terms == null) {
             fail(callback, 0L);
             return;
@@ -880,7 +831,7 @@ public final class ParaClient {
     }
 
     private void find(String queryType, Map<String, Object> params,
-                      Listener<Map<String, Object>> callback, Response.ErrorListener... error) {
+                      Listener<Map<String, Object>> callback, ErrorListener... error) {
         Map<String, Object> map = new HashMap<String, Object>();
         if (params != null && !params.isEmpty()) {
             String qType = StringUtils.isBlank(queryType) ? "" : "/".concat(queryType);
@@ -905,7 +856,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void countLinks(ParaObject obj, String type2, final Listener<Long> callback,
-                           Response.ErrorListener... error) {
+                           ErrorListener... error) {
         if (obj == null || obj.getId() == null || type2 == null) {
             fail(callback, 0L);
             return;
@@ -933,7 +884,7 @@ public final class ParaClient {
      */
     public void getLinkedObjects(ParaObject obj, String type2, final Pager pager,
                                 final Listener<List<ParaObject>> callback,
-                                Response.ErrorListener... error) {
+                                ErrorListener... error) {
         if (obj == null || obj.getId() == null || type2 == null) {
             fail(callback, Collections.emptyList());
             return;
@@ -955,15 +906,15 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void isLinked(ParaObject obj, String type2, String id2,
-                            final Listener<Boolean> callback, Response.ErrorListener... error) {
+                            final Listener<Boolean> callback, ErrorListener... error) {
         if (obj == null || obj.getId() == null || type2 == null || id2 == null) {
             fail(callback, false);
             return;
         }
         String url = ClientUtils.formatMessage("{0}/links/{1}/{2}", obj.getObjectURI(), type2, id2);
-        invokeGet(url, null, Boolean.class, new Listener<Boolean>() {
-            public void onResponse(Boolean res) {
-                callback.onResponse(res);
+        invokeGet(url, null, String.class, new Listener<String>() {
+            public void onResponse(String res) {
+                callback.onResponse(res == null ? false : Boolean.parseBoolean(res));
             }
         }, error);
     }
@@ -976,7 +927,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void isLinked(ParaObject obj, Sysprop toObj, Listener<Boolean> callback,
-                         Response.ErrorListener... error) {
+                         ErrorListener... error) {
         if (obj == null || obj.getId() == null || toObj == null || toObj.getId() == null) {
             fail(callback, false);
             return;
@@ -994,7 +945,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void link(ParaObject obj, String id2, Listener<String> callback,
-                     Response.ErrorListener... error) {
+                     ErrorListener... error) {
         if (obj == null || obj.getId() == null || id2 == null) {
             fail(callback, null);
             return;
@@ -1012,7 +963,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void unlink(ParaObject obj, String type2, String id2, Listener<Map> callback,
-                       Response.ErrorListener... error) {
+                       ErrorListener... error) {
         if (obj == null || obj.getId() == null || type2 == null || id2 == null) {
             fail(callback, null);
             return;
@@ -1029,7 +980,7 @@ public final class ParaClient {
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
-    public void unlinkAll(ParaObject obj, Listener<Map> callback, Response.ErrorListener... error) {
+    public void unlinkAll(ParaObject obj, Listener<Map> callback, ErrorListener... error) {
         if (obj == null || obj.getId() == null) {
             fail(callback, null);
             return;
@@ -1046,7 +997,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void countChildren(ParaObject obj, String type2, final Listener<Long> callback,
-                              Response.ErrorListener... error) {
+                              ErrorListener... error) {
         if (obj == null || obj.getId() == null || type2 == null) {
             fail(callback, 0L);
             return;
@@ -1074,7 +1025,7 @@ public final class ParaClient {
      */
     public void getChildren(ParaObject obj, String type2, final Pager pager,
                             final Listener<List<ParaObject>> callback,
-                            Response.ErrorListener... error) {
+                            ErrorListener... error) {
         if (obj == null || obj.getId() == null || type2 == null) {
             fail(callback, Collections.emptyList());
             return;
@@ -1101,7 +1052,7 @@ public final class ParaClient {
      */
     public void getChildren(ParaObject obj, String type2, String field, String term,
                             final Pager pager, final Listener<List<ParaObject>> callback,
-                            Response.ErrorListener... error) {
+                            ErrorListener... error) {
         if (obj == null || obj.getId() == null || type2 == null) {
             fail(callback, Collections.emptyList());
             return;
@@ -1126,7 +1077,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void deleteChildren(ParaObject obj, String type2, Listener<Map> callback,
-                               Response.ErrorListener... error) {
+                               ErrorListener... error) {
         if (obj == null || obj.getId() == null || type2 == null) {
             fail(callback, null);
             return;
@@ -1146,7 +1097,7 @@ public final class ParaClient {
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
-    public void newId(final Listener<String> callback, Response.ErrorListener... error) {
+    public void newId(final Listener<String> callback, ErrorListener... error) {
         invokeGet("utils/newid", null, String.class, new Listener<String>() {
             public void onResponse(String res) {
                 callback.onResponse(res != null ? res : "");
@@ -1159,7 +1110,7 @@ public final class ParaClient {
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
-    public void getTimestamp(final Listener<Long> callback, Response.ErrorListener... error) {
+    public void getTimestamp(final Listener<Long> callback, ErrorListener... error) {
         invokeGet("utils/timestamp", null, String.class, new Listener<String>() {
             public void onResponse(String res) {
                 callback.onResponse(res != null ? Long.decode(res) : 0L);
@@ -1175,7 +1126,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void formatDate(String format, Locale loc, Listener<String> callback,
-                           Response.ErrorListener... error) {
+                           ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("format", format);
         params.put("locale", loc == null ? null : loc.toString());
@@ -1190,7 +1141,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void noSpaces(String str, String replaceWith, Listener<String> callback,
-                         Response.ErrorListener... error) {
+                         ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("string", str);
         params.put("replacement", replaceWith);
@@ -1204,7 +1155,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void stripAndTrim(String str, Listener<String> callback,
-                             Response.ErrorListener... error) {
+                             ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("string", str);
         invokeGet("utils/nosymbols", params, String.class, callback, error);
@@ -1217,7 +1168,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void markdownToHtml(String markdownString, Listener<String> callback,
-                               Response.ErrorListener... error) {
+                               ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("md", markdownString);
         invokeGet("utils/md2html", params, String.class, callback, error);
@@ -1230,7 +1181,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void approximately(long delta, Listener<String> callback,
-                              Response.ErrorListener... error) {
+                              ErrorListener... error) {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("delta", Long.toString(delta));
         invokeGet("utils/timeago", params, String.class, callback, error);
@@ -1247,7 +1198,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void newKeys(final Listener<Map<String, String>> callback,
-                        Response.ErrorListener... error) {
+                        ErrorListener... error) {
         final ParaClient that = this;
         invokePost("_newkeys", new HashMap<String, String>(), null,
                 new Listener<Map<String, String>>() {
@@ -1265,7 +1216,7 @@ public final class ParaClient {
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
-    public void types(Listener<Map<String, String>> callback, Response.ErrorListener... error) {
+    public void types(Listener<Map<String, String>> callback, ErrorListener... error) {
         invokeGet("_types", null, Map.class, callback, error);
     }
 
@@ -1275,7 +1226,7 @@ public final class ParaClient {
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
-    public void me(Listener<? extends ParaObject> callback, Response.ErrorListener... error) {
+    public void me(Listener<? extends ParaObject> callback, ErrorListener... error) {
         invokeGet("_me", null, Sysprop.class, callback, error);
     }
 
@@ -1289,7 +1240,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void validationConstraints(Listener<Map<String, Map<String, Map<String,
-            Map<String, ?>>>>> callback, Response.ErrorListener... error) {
+            Map<String, ?>>>>> callback, ErrorListener... error) {
         invokeGet("_constraints", null, Map.class, callback, error);
     }
 
@@ -1300,7 +1251,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void validationConstraints(String type, Listener<Map<String, Map<String,
-            Map<String, Map<String, ?>>>>> callback, Response.ErrorListener... error) {
+            Map<String, Map<String, ?>>>>> callback, ErrorListener... error) {
         invokeGet(ClientUtils.formatMessage("_constraints/{0}", type),
                 null, Map.class, callback, error);
     }
@@ -1315,7 +1266,7 @@ public final class ParaClient {
      */
     public void addValidationConstraint(String type, String field, Constraint c,
             Listener<Map<String, Map<String, Map<String, Map<String, ?>>>>> callback,
-                                        Response.ErrorListener... error) {
+                                        ErrorListener... error) {
         if (StringUtils.isBlank(type) || StringUtils.isBlank(field) || c == null) {
             fail(callback, Collections.emptyMap());
             return;
@@ -1334,7 +1285,7 @@ public final class ParaClient {
      */
     public void removeValidationConstraint(String type, String field, String constraintName,
                Listener<Map<String, Map<String, Map<String, Map<String, ?>>>>> callback,
-                                           Response.ErrorListener... error) {
+                                           ErrorListener... error) {
         if (StringUtils.isBlank(type) || StringUtils.isBlank(field) ||
                 StringUtils.isBlank(constraintName)) {
             fail(callback, Collections.emptyMap());
@@ -1354,7 +1305,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void resourcePermissions(Listener<Map<String, Map<String, List<String>>>> callback,
-                                    Response.ErrorListener... error) {
+                                    ErrorListener... error) {
         invokeGet("_permissions", null, Map.class, callback, error);
     }
 
@@ -1365,7 +1316,7 @@ public final class ParaClient {
      */
     public void resourcePermissions(String subjectid,
                                     Listener<Map<String, Map<String, List<String>>>> callback,
-                                    Response.ErrorListener... error) {
+                                    ErrorListener... error) {
         invokeGet(ClientUtils.formatMessage("_permissions/{0}", subjectid),
                 null, Map.class, callback, error);
     }
@@ -1381,7 +1332,7 @@ public final class ParaClient {
      */
     public void grantResourcePermission(String subjectid, String resourceName, String[] permission,
                                         Listener<Map<String, Map<String, List<String>>>> callback,
-                                        Response.ErrorListener... error) {
+                                        ErrorListener... error) {
         if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourceName) || permission == null) {
             fail(callback, Collections.emptyMap());
             return;
@@ -1400,7 +1351,7 @@ public final class ParaClient {
      */
     public void revokeResourcePermission(String subjectid, String resourceName,
                                      Listener<Map<String, Map<String, List<String>>>> callback,
-                                         Response.ErrorListener... error) {
+                                         ErrorListener... error) {
         if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourceName)) {
             fail(callback, Collections.emptyMap());
             return;
@@ -1417,7 +1368,7 @@ public final class ParaClient {
      */
     public void revokeAllResourcePermissions(String subjectid,
                                          Listener<Map<String, Map<String, List<String>>>> callback,
-                                         Response.ErrorListener... error) {
+                                         ErrorListener... error) {
         if (StringUtils.isBlank(subjectid)) {
             fail(callback, Collections.emptyMap());
             return;
@@ -1435,7 +1386,7 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void isAllowedTo(String subjectid, String resourceName, String httpMethod,
-                               final Listener<Boolean> callback, Response.ErrorListener... error) {
+                               final Listener<Boolean> callback, ErrorListener... error) {
         if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourceName) ||
                 StringUtils.isBlank(httpMethod)) {
             fail(callback, false);
@@ -1444,8 +1395,8 @@ public final class ParaClient {
         String url = ClientUtils.formatMessage("_permissions/{0}/{1}/{2}",
                 subjectid, resourceName, httpMethod);
         invokeGet(url, null, String.class, new Listener<String>() {
-            public void onResponse(String s) {
-                callback.onResponse(s == null ? false : Boolean.parseBoolean(s));
+            public void onResponse(String res) {
+                callback.onResponse(res == null ? false : Boolean.parseBoolean(res));
             }
         }, error);
     }
@@ -1469,7 +1420,7 @@ public final class ParaClient {
      */
     @SuppressWarnings("unchecked")
     public void signIn(String provider, String providerToken, final Listener<Sysprop> callback,
-                       Response.ErrorListener... error) {
+                       final ErrorListener... error) {
         if (!StringUtils.isBlank(provider) && !StringUtils.isBlank(providerToken)) {
             Map<String, String> credentials = new HashMap<String, String>();
             credentials.put("appid", accessKey);
@@ -1496,7 +1447,12 @@ public final class ParaClient {
                         }
                     }
                 }
-            }, error);
+            }, new ErrorListener() {
+                public void onErrorResponse(VolleyError volleyError) {
+                    clearAccessToken();
+                    onError(error);
+                }
+            });
         } else {
             if (callback != null) {
                 callback.onResponse(null);
@@ -1518,7 +1474,7 @@ public final class ParaClient {
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
-    protected void refreshToken(final Listener<Boolean> callback, Response.ErrorListener... error) {
+    protected void refreshToken(final Listener<Boolean> callback, final ErrorListener... error) {
         long now = System.currentTimeMillis();
         boolean notExpired = tokenKeyExpires != null && tokenKeyExpires > now;
         boolean canRefresh = tokenKeyNextRefresh != null &&
@@ -1545,7 +1501,12 @@ public final class ParaClient {
                         }
                     }
                 }
-            }, error);
+            }, new ErrorListener() {
+                public void onErrorResponse(VolleyError volleyError) {
+                    clearAccessToken();
+                    onError(error);
+                }
+            });
         } else {
             if (callback != null) {
                 callback.onResponse(false);
@@ -1561,7 +1522,7 @@ public final class ParaClient {
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
-    public void revokeAllTokens(final Listener<Boolean> callback, Response.ErrorListener... error) {
+    public void revokeAllTokens(final Listener<Boolean> callback, ErrorListener... error) {
         invokeDelete(JWT_PATH, null, Map.class, new Listener<Map>() {
             public void onResponse(Map response) {
                 if (callback != null) {

@@ -20,12 +20,9 @@ package com.erudika.para.client.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Base64;
-
 import com.erudika.para.core.ParaObject;
 import com.erudika.para.core.Sysprop;
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonValue;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
@@ -36,7 +33,6 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.MessageFormat;
-import java.util.EnumSet;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -295,80 +291,4 @@ public final class ClientUtils {
             prefs.edit().remove(key).commit();
         }
     }
-//
-//    /**
-//     * Represents HTTP methods allowed to be executed on a specific resource/type.
-//     * For example; the 'books' type can have a permission '{ "*" : ["GET"] }' which means
-//     * "give read-only permissions to everyone". It is backed by a map of resource names
-//     * (object types) to a set of allowed HTTP methods.
-//     */
-//    public static enum AllowedMethods {
-//
-//        /**
-//         * Allows all HTTP methods (full access)
-//         */
-//        READ_WRITE,
-//        /**
-//         * Allows GET method only
-//         */
-//        GET,
-//        /**
-//         * Allows POST method only
-//         */
-//        POST,
-//        /**
-//         * Allows PUT method only
-//         */
-//        PUT,
-//        /**
-//         * ALlows PATCH method only
-//         */
-//        PATCH,
-//        /**
-//         * Allows DELETE method only
-//         */
-//        DELETE,
-//        /**
-//         * Allows read methods: GET, same as {@link #GET}
-//         */
-//        READ_ONLY,
-//        /**
-//         * Allows write methods: POST, PUT, PATCH and DELETE
-//         */
-//        WRITE_ONLY;
-//
-//        public static final EnumSet<AllowedMethods> ALL_VALUES = EnumSet.of(GET, POST, PUT, PATCH, DELETE);
-//        public static final EnumSet<AllowedMethods> READ_AND_WRITE = EnumSet.of(READ_WRITE);
-//        public static final EnumSet<AllowedMethods> READ = EnumSet.of(GET);
-//        public static final EnumSet<AllowedMethods> WRITE = EnumSet.of(POST, PUT, PATCH, DELETE);
-//        public static final EnumSet<AllowedMethods> ALL_EXCEPT_DELETE = EnumSet.of(GET, POST, PUT, PATCH);
-//
-//        @JsonCreator
-//        public static AllowedMethods fromString(String value) {
-//            if (ALLOW_ALL.equals(value)) {
-//                return READ_WRITE;
-//            } else {
-//                try {
-//                    return valueOf(value.toUpperCase());
-//                } catch (Exception e) {
-//                    return null;
-//                }
-//            }
-//        }
-//
-//        @Override
-//        @JsonValue
-//        public String toString() {
-//            switch (this) {
-//                case READ_WRITE:
-//                    return ALLOW_ALL;
-//                case READ_ONLY:
-//                    return GET.name();
-//                case WRITE_ONLY:
-//                    return "w";
-//                default:
-//                    return this.name();
-//            }
-//        }
-//    }
 }

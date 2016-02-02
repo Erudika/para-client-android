@@ -28,7 +28,6 @@ import com.erudika.para.core.ParaObject;
 import com.erudika.para.core.Sysprop;
 import static com.erudika.para.core.Constraint.*;
 import static com.erudika.para.client.utils.ClientUtils.*;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,10 +38,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import static org.junit.Assert.*;
-
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 /**
  * ParaClient integration tests - execute on device!
  * @author Alex Bogdanovski [alex@erudika.com]
@@ -54,7 +53,6 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
     private ParaClient pc;
     private static final String catsType = "cat";
     private static final String dogsType = "dog";
-    private static final String batsType = "bat";
     private static final String APP_ID = "app:para";
 
     protected static Sysprop u;
@@ -77,7 +75,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
 
     private ParaClient pc() {
         if (pc == null) {
-            pc = new ParaClient("app:para", "3Ssyc7njcE5Wjj/EGeOvLd5PhIKvqwxGC28kuWXlhiOH1YwtSzvEUQ==", ctx);
+            pc = new ParaClient("app:para", "Kh7jXZNH4Ner2320F+rzM3XmFHGxCQFzLHnu/fCPvBU+e3sjV2slzw==", ctx);
             pc.setEndpoint("http://192.168.0.113:8080");
         }
         return pc;
@@ -724,10 +722,10 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         });
         pc().findTerms(u().getType(), Collections.singletonMap("type", u().getType()), true, null,
                 new Listener<List<ParaObject>>() {
-                    public void onResponse(List<ParaObject> res) {
-                        assertTrue(res.size() >= 2);
-                    }
-                });
+            public void onResponse(List<ParaObject> res) {
+                assertTrue(res.size() >= 2);
+            }
+        });
 
         pc().findWildcard(u().getType(), null, null, null, new Listener<List<ParaObject>>() {
             public void onResponse(List<ParaObject> res) {
@@ -812,12 +810,6 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
                                 assertTrue(res);
                             }
                         });
-
-//                        try {
-//                            Thread.sleep(1000);
-//                        } catch (InterruptedException e) {
-//                            e.printStackTrace();
-//                        }
 
                         pc().getLinkedObjects(u(), "tag", null, new Listener<List<ParaObject>>() {
                             public void onResponse(List<ParaObject> res) {
@@ -960,40 +952,40 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
 
         pc().validationConstraints("app",
                 new Listener<Map<String, Map<String, Map<String, Map<String, ?>>>>>() {
-                    public void onResponse(Map<String, Map<String, Map<String, Map<String, ?>>>> constraint) {
-                        assertFalse(constraint.isEmpty());
-                        assertTrue(constraint.containsKey("app"));
-                        assertEquals(1, constraint.size());
-                    }
-                });
+            public void onResponse(Map<String, Map<String, Map<String, Map<String, ?>>>> constraint) {
+                assertFalse(constraint.isEmpty());
+                assertTrue(constraint.containsKey("app"));
+                assertEquals(1, constraint.size());
+            }
+        });
 
         pc().addValidationConstraint(kittenType, "paws", required(),
                 new Listener<Map<String, Map<String, Map<String, Map<String, ?>>>>>() {
+            public void onResponse(Map<String, Map<String, Map<String, Map<String, ?>>>> constraint) {
+                pc().validationConstraints(kittenType,
+                        new Listener<Map<String, Map<String, Map<String, Map<String, ?>>>>>() {
                     public void onResponse(Map<String, Map<String, Map<String, Map<String, ?>>>> constraint) {
-                        pc().validationConstraints(kittenType,
-                                new Listener<Map<String, Map<String, Map<String, Map<String, ?>>>>>() {
-                                    public void onResponse(Map<String, Map<String, Map<String, Map<String, ?>>>> constraint) {
-                                        assertTrue(constraint.get(kittenType).containsKey("paws"));
+                        assertTrue(constraint.get(kittenType).containsKey("paws"));
 
-                                        final Sysprop ct = new Sysprop("felix");
-                                        ct.setType(kittenType);
-                                        // validation fails
-                                        pc().create(ct, new Listener<ParaObject>() {
-                                            public void onResponse(ParaObject res) {
-                                                assertNull(res);
-                                                // fix
-                                                ct.addProperty("paws", "4");
-                                                pc().create(ct, new Listener<ParaObject>() {
-                                                    public void onResponse(ParaObject res) {
-                                                        assertNotNull(res);
-                                                    }
-                                                });
-                                            }
-                                        });
+                        final Sysprop ct = new Sysprop("felix");
+                        ct.setType(kittenType);
+                        // validation fails
+                        pc().create(ct, new Listener<ParaObject>() {
+                            public void onResponse(ParaObject res) {
+                                assertNull(res);
+                                // fix
+                                ct.addProperty("paws", "4");
+                                pc().create(ct, new Listener<ParaObject>() {
+                                    public void onResponse(ParaObject res) {
+                                        assertNotNull(res);
                                     }
                                 });
+                            }
+                        });
                     }
                 });
+            }
+        });
 
 
         pc().removeValidationConstraint(kittenType, "paws", "required",
@@ -1241,19 +1233,19 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         });
     }
 
-//    @Test
-//    public void testAccessTokens() {
-//        assertNull(pc().getAccessToken());
-//        pc().signIn("facebook", "test_token", new Listener<Sysprop>() {
-//            public void onResponse(Sysprop res) {
-//                assertNull(res);
-//            }
-//        });
-//        pc().signOut();
-//        pc().revokeAllTokens(new Listener<Boolean>() {
-//            public void onResponse(Boolean res) {
-//                assertFalse(res);
-//            }
-//        });
-//    }
+    @Test
+    public void testAccessTokens() {
+        assertNull(pc().getAccessToken());
+        pc().signIn("facebook", "test_token", new Listener<Sysprop>() {
+            public void onResponse(Sysprop res) {
+                assertNull(res);
+            }
+        });
+        pc().signOut();
+        pc().revokeAllTokens(new Listener<Boolean>() {
+            public void onResponse(Boolean res) {
+                assertFalse(res);
+            }
+        });
+    }
 }
