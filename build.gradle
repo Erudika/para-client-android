@@ -24,3 +24,8 @@ allprojects {
         jcenter()
     }
 }
+
+bintray {
+    publications = []
+    configurations = []
+}

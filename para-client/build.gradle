@@ -133,24 +133,28 @@ artifacts {
 Properties properties = new Properties()
 properties.load(project.rootProject.file('local.properties').newDataInputStream())
 
-bintray {
-    user = properties.getProperty("bintray.user")
-    key = properties.getProperty("bintray.apikey")
+allprojects {
+    bintray {
+        user = properties.getProperty("bintray.user")
+        key = properties.getProperty("bintray.apikey")
 
-    configurations = ['archives']
-    pkg {
-        userOrg = "erudika"
-        repo = "releases"
-        name = "para-client-android"
-        websiteUrl = "http://www.paraio.org"
-        vcsUrl = gitURL
-        licenses = ["Apache-2.0"]
-        labels = ['para', 'backend', 'server', 'api', 'erudika', 'sdk']
-        publish = true
-        version {
-            name = paraVer
-            released = new Date()
-            vcsTag = paraVer
+        configurations = ['archives']
+        pkg {
+            userOrg = "erudika"
+            repo = "releases"
+            name = "para-client-android"
+            websiteUrl = "http://www.paraio.org"
+            githubRepo = 'Erudika/para-client-android'
+            githubReleaseNotesFile = 'README.md'
+            vcsUrl = gitURL
+            licenses = ["Apache-2.0"]
+            labels = ['para', 'backend', 'server', 'api', 'erudika', 'sdk']
+            publish = true
+            version {
+                name = paraVer
+                released = new Date()
+                vcsTag = paraVer
+            }
         }
     }
 }
