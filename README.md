@@ -19,7 +19,7 @@ dependency to your project.
 
 ```
 dependencies {
-    compile 'com.erudika:para-client-android:1.18.0'
+    compile 'com.erudika:para-client-android:+'
 }
 ```
 
@@ -27,6 +27,9 @@ dependencies {
 ```java
 ParaClient client = new ParaClient('ACCESS_KEY', 'SECRET_KEY');
 ```
+
+The Android client uses Volley for HTTP requests so all requests are asynchronous.
+Each method takes a callback (Listener) in which the result is returned.
 
 ## Documentation
 

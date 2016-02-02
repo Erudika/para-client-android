@@ -21,7 +21,6 @@ import com.erudika.para.client.utils.ClientUtils;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.core.JsonProcessingException;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
