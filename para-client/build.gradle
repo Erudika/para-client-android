@@ -144,6 +144,7 @@ allprojects {
             repo = "releases"
             name = "para-client-android"
             websiteUrl = "http://www.paraio.org"
+            issueTrackerUrl = 'https://github.com/Erudika/para-client-android/issues'
             githubRepo = 'Erudika/para-client-android'
             githubReleaseNotesFile = 'README.md'
             vcsUrl = gitURL
