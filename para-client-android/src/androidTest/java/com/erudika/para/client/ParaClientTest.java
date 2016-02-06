@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
  * @author Alex Bogdanovski [alex@erudika.com]
  */
 @SmallTest
+@SuppressWarnings("unchecked")
 public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivity> {
 
     private static final Logger logger = LoggerFactory.getLogger(ParaClientTest.class);

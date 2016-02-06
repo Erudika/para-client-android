@@ -79,8 +79,8 @@ public final class ParaClient {
         this.tokenKeyExpires = Long.getLong(ClientUtils.loadPref("tokenKeyExpires", ctx));
         this.tokenKeyNextRefresh = Long.getLong(ClientUtils.loadPref("tokenKeyNextRefresh", ctx));
 
-        if (StringUtils.length(secretKey) < 6) {
-            logger.warn("Secret key appears to be invalid. Make sure you call 'signIn()' first.");
+        if (StringUtils.isBlank(secretKey)) {
+            logger.warn("Secret key not provided. Make sure you call 'signIn()' first.");
         }
     }
 
