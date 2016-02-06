@@ -1,1 +1,1 @@
-include ':para-client'
+include ':para-client-android'

@@ -5,7 +5,7 @@ apply plugin: 'com.jfrog.bintray'
 //apply plugin: 'signing'
 
 def gitURL = 'git@github.com:Erudika/para-client-android.git'
-def paraVer = '1.17.0'
+def paraVer = '1.17.1'
 group = "com.erudika"
 version = paraVer
 
