@@ -2,7 +2,7 @@
 ============================
 
 # Android Client for Para
-
+[ ![Download](https://api.bintray.com/packages/erudika/releases/para-client-android/images/download.svg) ](https://bintray.com/erudika/releases/para-client-android/_latestVersion)
 
 ## What is this?
 
@@ -25,7 +25,15 @@ dependencies {
 
 2. Initialize the client with your access and secret API keys.
 ```java
-ParaClient client = new ParaClient('ACCESS_KEY', 'SECRET_KEY');
+// avoid using the secret key on mobile devices
+ParaClient client = new ParaClient('ACCESS_KEY', null, applicationContext);
+client.signIn("facebook", "fb_access_token", new Response.Listener<ParaObject>() {
+    public void onResponse(ParaObject user) {
+    	if (user != null) {
+    		// success! user is authenticated, JWT token is saved
+    	}
+    }
+});
 ```
 
 The Android client uses Volley for HTTP requests so all requests are asynchronous.
