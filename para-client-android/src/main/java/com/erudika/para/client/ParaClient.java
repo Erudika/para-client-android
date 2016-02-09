@@ -66,6 +66,7 @@ public final class ParaClient {
     private Long tokenKeyNextRefresh;
     private final Signer signer = new Signer();
     private Context ctx;
+    private String trustedHostname;
 
     private RequestQueue requestQueue;
 
@@ -90,7 +91,12 @@ public final class ParaClient {
             if (ctx == null) {
                 requestQueue = new RequestQueue(new NoCache(), new BasicNetwork(new HurlStack()));
             } else {
-                requestQueue = Volley.newRequestQueue(ctx.getApplicationContext());
+                if (StringUtils.isBlank(trustedHostname)) {
+                    requestQueue = Volley.newRequestQueue(ctx.getApplicationContext());
+                } else {
+                    requestQueue = Volley.newRequestQueue(ctx.getApplicationContext(),
+                        new HurlStack(null, ClientUtils.newCustomSocketFactory(trustedHostname)));
+                }
             }
         }
         return requestQueue;
@@ -98,6 +104,15 @@ public final class ParaClient {
 
     public void enqueue(Request<?> req) {
         getRequestQueue().add(req);
+    }
+
+    /**
+     * Disables the verification of TLS certificates for a given
+     * hostname. Allows self-signed certificates. Use with caution.
+     * @param trustedHostname a hostname to trust, e.g. 'example.com'
+     */
+    public void trustHostnameCertificates(String trustedHostname) {
+        this.trustedHostname = trustedHostname;
     }
 
     /**

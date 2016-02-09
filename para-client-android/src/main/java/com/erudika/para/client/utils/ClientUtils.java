@@ -20,6 +20,7 @@ package com.erudika.para.client.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Base64;
+
 import com.erudika.para.core.ParaObject;
 import com.erudika.para.core.Sysprop;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -32,8 +33,18 @@ import org.apache.commons.lang3.StringUtils;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.text.MessageFormat;
 import java.util.Map;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * Client utilities.
@@ -279,5 +290,35 @@ public final class ClientUtils {
             SharedPreferences prefs = ctx.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
             prefs.edit().remove(key).commit();
         }
+    }
+
+    public static SSLSocketFactory newCustomSocketFactory(final String trustedHostname) {
+        SSLSocketFactory customSocketFactory = null;
+        try {
+            final HostnameVerifier hv = HttpsURLConnection.getDefaultHostnameVerifier();
+            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+                public boolean verify(String hostname, SSLSession session) {
+                    return hv.verify(trustedHostname, session);
+                }
+            });
+            TrustManager[] trustAllCerts = new TrustManager[] {
+                new X509TrustManager() {
+                    public X509Certificate[] getAcceptedIssuers() {
+                        X509Certificate[] myTrustedAnchors = new X509Certificate[0];
+                        return myTrustedAnchors;
+                    }
+                    public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+                    public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+                }
+            };
+
+            SSLContext context = SSLContext.getInstance("TLS");
+            context.init(null, trustAllCerts, new SecureRandom());
+            customSocketFactory = context.getSocketFactory();
+            HttpsURLConnection.setDefaultSSLSocketFactory(context.getSocketFactory());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return customSocketFactory;
     }
 }

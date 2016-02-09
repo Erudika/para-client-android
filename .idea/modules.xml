@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/para-client-android.iml" filepath="$PROJECT_DIR$/para-client-android.iml" />
+      <module fileurl="file://$PROJECT_DIR$/para-client-android/para-client-android-para-client-android.iml" filepath="$PROJECT_DIR$/para-client-android/para-client-android-para-client-android.iml" />
     </modules>
   </component>
 </project>
