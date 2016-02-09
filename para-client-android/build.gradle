@@ -5,7 +5,7 @@ apply plugin: 'com.jfrog.bintray'
 //apply plugin: 'signing'
 
 def gitURL = 'git@github.com:Erudika/para-client-android.git'
-def paraVer = '1.17.1'
+def paraVer = '1.17.2'
 group = "com.erudika"
 version = paraVer
 
@@ -73,6 +73,11 @@ dependencies {
     compile 'com.amazonaws:aws-java-sdk-core:1.10.49'
     // DO NOT USE Android SDK - breaks tests because of PATCH methods
     //compile 'com.amazonaws:aws-android-sdk-core:2.2.10'
+}
+
+configurations {
+    all*.exclude group: 'commons-logging', module: 'commons-logging'
+    all*.exclude group: 'org.apache.httpcomponents', module: 'httpclient'
 }
 
 install {
