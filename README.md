@@ -39,6 +39,13 @@ client.signIn("facebook", "fb_access_token", new Response.Listener<ParaObject>()
 The Android client uses Volley for HTTP requests so all requests are asynchronous.
 Each method takes a callback (Listener) in which the result is returned.
 
+To trust a self-signed TLS certificate use the method `pc.trustHostnameCertificates(hostname)`:
+```java
+ParaClient pc = new ParaClient(myAppId, null, applicationContext);
+pc.trustHostnameCertificates("myhost.com");
+```
+
+
 ## Documentation
 
 ###[Read the Docs](http://paraio.org/docs)
