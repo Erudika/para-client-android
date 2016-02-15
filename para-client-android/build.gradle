@@ -1,11 +1,9 @@
 apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
-//apply plugin: "maven"
-//apply plugin: 'signing'
 
 def gitURL = 'git@github.com:Erudika/para-client-android.git'
-def paraVer = '1.17.2'
+def paraVer = '1.17.3'
 group = "com.erudika"
 version = paraVer
 
