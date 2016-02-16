@@ -43,6 +43,9 @@ public class Sysprop implements ParaObject {
     private String name;
     private List<String> tags;
     private Integer votes;
+    private Boolean stored;
+    private Boolean indexed;
+    private Boolean cached;
 
     private Map<String, Object> properties;
 
@@ -171,6 +174,36 @@ public class Sysprop implements ParaObject {
 
     public void setTags(List<String> tags) {
         this.tags = tags;
+    }
+
+    @Override
+    public Boolean getStored() {
+        return stored;
+    }
+
+    @Override
+    public void setStored(Boolean isStored) {
+        this.stored = isStored;
+    }
+
+    @Override
+    public Boolean getIndexed() {
+        return indexed;
+    }
+
+    @Override
+    public void setIndexed(Boolean isIndexed) {
+        this.indexed = isIndexed;
+    }
+
+    @Override
+    public Boolean getCached() {
+        return cached;
+    }
+
+    @Override
+    public void setCached(Boolean isCached) {
+        this.cached = isCached;
     }
 
     public Long getTimestamp() {
