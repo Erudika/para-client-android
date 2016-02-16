@@ -148,6 +148,45 @@ public interface ParaObject extends Serializable {
     void setTags(List<String> tags);
 
     /**
+     * Boolean flag which controls whether this object is stored
+     * in the database or not. Default is true.
+     * @return true if this object is stored in DB.
+     */
+    Boolean getStored();
+
+    /**
+     * Sets the "isStored" flag.
+     * @param isStored when set to true, object is stored in DB.
+     */
+    void setStored(Boolean isStored);
+
+    /**
+     * Boolean flat which controls whether this object is indexed
+     * by the search engine. Default is true.
+     * @return true if this object is indexed
+     */
+    Boolean getIndexed();
+
+    /**
+     * Sets the "isIndexed" flag.
+     * @param isIndexed when set to true, object is indexed.
+     */
+    void setIndexed(Boolean isIndexed);
+
+    /**
+     * Boolean flat which controls whether this object is cached.
+     * Default is true.
+     * @return true if this object is cached on update() and create().
+     */
+    Boolean getCached();
+
+    /**
+     * Sets the "isCached" flag.
+     * @param isCached when set to true, object is cached.
+     */
+    void setCached(Boolean isCached);
+
+    /**
      * Returns the total sum of all votes for this object.
      * For example: (+6) + (-4) = 2
      * @return the total sum of votes
