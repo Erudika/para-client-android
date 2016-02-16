@@ -22,13 +22,8 @@ import com.amazonaws.DefaultRequest;
 import com.amazonaws.auth.AWS4Signer;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.http.HttpMethodName;
-import com.android.volley.AuthFailureError;
-import com.android.volley.NetworkResponse;
-import com.android.volley.ParseError;
 import com.android.volley.Request;
 import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.HttpHeaderParser;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
@@ -294,87 +289,6 @@ public final class Signer extends AWS4Signer {
         } catch (Exception e) {
             logger.error("Object could not be converted to JSON byte[]", e);
             return new byte[0];
-        }
-    }
-
-    class ParaRequest<T> extends Request<T> {
-
-        private final Map<String, String> headers;
-        private final Response.Listener<T> listener;
-        private final Response.ErrorListener errorListener;
-        private final byte[] body;
-        private final Class<T> type;
-private String url;
-        /**
-         * Make an API request and return a parsed object from JSON.
-         * @param url URL of the request to make
-         * @param headers Map of request headers
-         * @param jsonEntity request body
-         * @param entityType the type to return when JSON is deserialized
-         * @param successListener success listener
-         * @param errorListener error listener
-         */
-        public ParaRequest(int method, String url, Map<String, String> headers,
-                   byte[] jsonEntity, Class<T> entityType,
-                   Response.Listener<T> successListener, Response.ErrorListener errorListener) {
-            super(method, url, errorListener);
-            this.headers = headers;
-            this.listener = successListener;
-            this.errorListener = errorListener;
-            this.body = jsonEntity;
-            this.type = entityType;
-
-            this.url = url;
-        }
-
-        @Override
-        public Map<String, String> getHeaders() throws AuthFailureError {
-            return headers != null ? headers : super.getHeaders();
-        }
-
-        @Override
-        protected void deliverResponse(T response) {
-            if (listener != null) {
-                listener.onResponse(response);
-            }
-        }
-
-        @Override
-        public void deliverError(VolleyError error) {
-            if (errorListener != null) {
-                errorListener.onErrorResponse(error);
-            }
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        protected Response<T> parseNetworkResponse(NetworkResponse response) {
-            try {
-                if (response != null && response.data != null && response.data.length > 0) {
-                    if (ClientUtils.isBasicType(type)) {
-                        return (Response<T>) Response.success(new String(response.data, "UTF-8"),
-                                HttpHeaderParser.parseCacheHeaders(response));
-                    } else {
-                        return Response.success((T) ClientUtils.getJsonReader(type).
-                                readValue(response.data), HttpHeaderParser.parseCacheHeaders(response));
-                    }
-                } else {
-                    return Response.success(null, HttpHeaderParser.parseCacheHeaders(response));
-                }
-            } catch (Exception e) {
-                logger.error("JSON parsing error", e);
-                return Response.error(new ParseError(e));
-            }
-        }
-
-        @Override
-        public String getBodyContentType() {
-            return "application/json; charset=utf-8";
-        }
-
-        @Override
-        public byte[] getBody() {
-            return body;
         }
     }
 

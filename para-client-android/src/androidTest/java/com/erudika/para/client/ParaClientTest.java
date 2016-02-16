@@ -77,7 +77,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
 
     private ParaClient pc() {
         if (pc == null) {
-            pc = new ParaClient("app:para", "Kh7jXZNH4Ner2320F+rzM3XmFHGxCQFzLHnu/fCPvBU+e3sjV2slzw==", ctx);
+            pc = new ParaClient("app:para", "Kl/9ob2S/JmaoKkVMfElUtfERhCLn4H8gi1EvKGrejtZYCecpe2Z0g==", ctx);
             pc.setEndpoint("http://192.168.0.113:8080");
         }
         return pc;

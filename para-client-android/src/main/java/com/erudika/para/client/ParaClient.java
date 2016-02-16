@@ -18,7 +18,6 @@
 package com.erudika.para.client;
 
 import android.content.Context;
-import com.android.volley.Request;
 import static com.android.volley.Request.Method.*;
 import com.android.volley.RequestQueue;
 import static com.android.volley.Response.*;
@@ -26,6 +25,7 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.BasicNetwork;
 import com.android.volley.toolbox.HurlStack;
 import com.android.volley.toolbox.NoCache;
+import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.Volley;
 import com.erudika.para.client.utils.Pager;
 import com.erudika.para.client.utils.Signer;
@@ -42,6 +42,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +51,7 @@ import org.slf4j.LoggerFactory;
  * The Java REST client for communicating with a Para API server.
  * @author Alex Bogdanovski [alex@erudika.com]
  */
+@SuppressWarnings("unchecked")
 public final class ParaClient {
 
     private static final Logger logger = LoggerFactory.getLogger(ParaClient.class);
@@ -100,10 +102,6 @@ public final class ParaClient {
             }
         }
         return requestQueue;
-    }
-
-    public void enqueue(Request<?> req) {
-        getRequestQueue().add(req);
     }
 
     /**
@@ -169,7 +167,6 @@ public final class ParaClient {
      * Sets the JWT access token.
      * @param token a valid token
      */
-    @SuppressWarnings("unchecked")
     public void setAccessToken(String token) {
         if (!StringUtils.isBlank(token)) {
             try {
@@ -212,14 +209,12 @@ public final class ParaClient {
          */
     }
 
-    @SuppressWarnings("unchecked")
     private <T> void fail(Listener<T> callback, Object returnValue) {
         if (callback != null) {
             callback.onResponse((T) returnValue);
         }
     }
 
-    @SuppressWarnings("unchecked")
     private ErrorListener onError(ErrorListener... error) {
         if (error != null && error.length > 0) {
             return error[0];
@@ -265,39 +260,75 @@ public final class ParaClient {
         return getApiPath() + resourcePath;
     }
 
+    private <T> T invokeSignedSyncRequest(int method, String resourcePath, Map<String, Object> params,
+                                          Object entity, Class<T> returnType) {
+        RequestFuture<T> future = RequestFuture.newFuture();
+        ErrorListener error = onError();
+        boolean refreshJWT = !(method == GET && JWT_PATH.equals(resourcePath));
+        getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(refreshJWT),
+                method, getEndpoint(), getFullPath(resourcePath), null, params,
+                entity, returnType, future, error));
+        try {
+            return future.get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            error.onErrorResponse(new VolleyError(e));
+        }
+        return null;
+    }
+
     private void invokeGet(String resourcePath, Map<String, Object> params, Class<?> returnType,
                            Listener<?> success, ErrorListener... error) {
-        enqueue(signer.invokeSignedRequest(accessKey, key(!JWT_PATH.equals(resourcePath)), GET,
+        getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(!JWT_PATH.equals(resourcePath)), GET,
                 getEndpoint(), getFullPath(resourcePath), null, params, null, returnType,
                 success, onError(error)));
     }
 
     private void invokePost(String resourcePath, Object entity, Class<?> returnType,
                             Listener<?> success, ErrorListener... error) {
-        enqueue(signer.invokeSignedRequest(accessKey, key(false), POST,
+        getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(false), POST,
                 getEndpoint(), getFullPath(resourcePath), null, null, entity, returnType,
                 success, onError(error)));
     }
 
     private void invokePut(String resourcePath, Object entity, Class<?> returnType,
                            Listener<?> success, ErrorListener... error) {
-        enqueue(signer.invokeSignedRequest(accessKey, key(false), PUT,
+        getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(false), PUT,
                 getEndpoint(), getFullPath(resourcePath), null, null, entity, returnType,
                 success, onError(error)));
     }
 
     private void invokePatch(String resourcePath, Object entity, Class<?> returnType,
                              Listener<?> success, ErrorListener... error) {
-        enqueue(signer.invokeSignedRequest(accessKey, key(false), PATCH,
+        getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(false), PATCH,
                 getEndpoint(), getFullPath(resourcePath), null, null, entity, returnType,
                 success, onError(error)));
     }
 
     private void invokeDelete(String resourcePath, Map<String, Object> params, Class<?> returnType,
                               Listener<?> success, ErrorListener... error) {
-        enqueue(signer.invokeSignedRequest(accessKey, key(false), DELETE,
+        getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(false), DELETE,
                 getEndpoint(), getFullPath(resourcePath), null, params, null, returnType,
                 success, onError(error)));
+    }
+
+    private <T> T invokeSyncGet(String resourcePath, Map<String, Object> params, Class<T> returnType) {
+        return invokeSignedSyncRequest(GET, resourcePath, params, null, returnType);
+    }
+
+    private <T> T invokeSyncPost(String resourcePath, Object entity, Class<T> returnType) {
+        return invokeSignedSyncRequest(POST, resourcePath, null, entity, returnType);
+    }
+
+    private <T> T invokeSyncPut(String resourcePath, Object entity, Class<T> returnType) {
+        return invokeSignedSyncRequest(PUT, resourcePath, null, entity, returnType);
+    }
+
+    private <T> T invokeSyncPatch(String resourcePath, Object entity, Class<T> returnType) {
+        return invokeSignedSyncRequest(PATCH, resourcePath, null, entity, returnType);
+    }
+
+    private <T> T invokeSyncDelete(String resourcePath, Map<String, Object> params, Class<T> returnType) {
+        return invokeSignedSyncRequest(DELETE, resourcePath, params, null, returnType);
     }
 
     private Map<String, Object> pagerToParams(Pager... pager) {
@@ -316,7 +347,6 @@ public final class ParaClient {
         return map;
     }
 
-    @SuppressWarnings("unchecked")
     private List<ParaObject> getItemsFromList(List<Map<String, Object>> result) {
         if (result != null && !result.isEmpty()) {
             // this isn't very efficient but there's no way to know what type of objects we're reading
@@ -332,7 +362,6 @@ public final class ParaClient {
         return Collections.emptyList();
     }
 
-    @SuppressWarnings("unchecked")
     private <P extends ParaObject> List<P> getItems(Map<String, Object> result, Pager... pager) {
         if (result != null && !result.isEmpty() && result.containsKey("items")) {
             if (pager != null && pager.length > 0 && pager[0] != null && result.containsKey("totalHits")) {
@@ -369,6 +398,25 @@ public final class ParaClient {
     }
 
     /**
+     * Persists an object to the data store. If the object's type and id are given,
+     * then the request will be a {@code PUT} request and any existing object will be
+     * overwritten.
+     * @param <P> the type of object
+     * @param obj the domain object
+     * @return the same object with assigned id or null if not created.
+     */
+    public <P extends ParaObject> P createSync(P obj) {
+        if (obj == null) {
+            return null;
+        }
+        if (StringUtils.isBlank(obj.getId()) || StringUtils.isBlank(obj.getType())) {
+            return invokeSyncPost(obj.getType(), obj, null);
+        } else {
+            return invokeSyncPut(obj.getType().concat("/").concat(obj.getId()), obj, null);
+        }
+    }
+
+    /**
      * Retrieves an object from the data store.
      * @param type the type of the object
      * @param id the id of the object
@@ -388,6 +436,20 @@ public final class ParaClient {
 
     /**
      * Retrieves an object from the data store.
+     * @param <P> the type of object
+     * @param type the type of the object
+     * @param id the id of the object
+     * @return the retrieved object or null if not found
+     */
+    public <P extends ParaObject> P readSync(Class<P> type, String id) {
+        if (type == null || StringUtils.isBlank(id)) {
+            return null;
+        }
+        return invokeSyncGet(type.getSimpleName().toLowerCase().concat("/").concat(id), null, type);
+    }
+
+    /**
+     * Retrieves an object from the data store.
      * @param id the id of the object
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
@@ -399,6 +461,19 @@ public final class ParaClient {
             return;
         }
         invokeGet("_id/".concat(id), null, Sysprop.class, callback, error);
+    }
+
+    /**
+     * Retrieves an object from the data store.
+     * @param <P> the type of object
+     * @param id the id of the object
+     * @return the retrieved object or null if not found
+     */
+    public <P extends ParaObject> P readSync(String id) {
+        if (StringUtils.isBlank(id)) {
+            return null;
+        }
+        return (P) invokeSyncGet("_id/".concat(id), null, Sysprop.class);
     }
 
     /**
@@ -417,6 +492,19 @@ public final class ParaClient {
     }
 
     /**
+     * Updates an object permanently. Supports partial updates.
+     * @param <P> the type of object
+     * @param obj the object to update
+     * @return the updated object
+     */
+    public <P extends ParaObject> P updateSync(P obj) {
+        if (obj == null) {
+            return null;
+        }
+        return invokeSyncPatch(obj.getObjectURI(), obj, null);
+    }
+
+    /**
      * Deletes an object permanently.
      * @param obj the object
      * @param callback Listener called with response object
@@ -429,6 +517,18 @@ public final class ParaClient {
             return;
         }
         invokeDelete(obj.getObjectURI(), null, obj.getClass(), callback, error);
+    }
+
+    /**
+     * Deletes an object permanently.
+     * @param <P> the type of object
+     * @param obj the object
+     */
+    public <P extends ParaObject> void deleteSync(P obj) {
+        if (obj == null) {
+            return;
+        }
+        invokeSyncDelete(obj.getObjectURI(), null, obj.getClass());
     }
 
     /**
@@ -448,6 +548,19 @@ public final class ParaClient {
                 callback.onResponse(getItemsFromList(res));
             }
         }, error);
+    }
+
+    /**
+     * Saves multiple objects to the data store.
+     * @param <P> the type of object
+     * @param objects the list of objects to save
+     * @return a list of objects
+     */
+    public <P extends ParaObject> List<P> createAllSync(List<P> objects) {
+        if (objects == null || objects.isEmpty() || objects.get(0) == null) {
+            return Collections.emptyList();
+        }
+        return getItemsFromList(invokeSyncPost("_batch", objects, List.class));
     }
 
     /**
@@ -472,6 +585,21 @@ public final class ParaClient {
     }
 
     /**
+     * Retrieves multiple objects from the data store.
+     * @param <P> the type of object
+     * @param keys a list of object ids
+     * @return a list of objects
+     */
+    public <P extends ParaObject> List<P> readAllSync(List<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<String, Object> ids = new HashMap<String, Object>();
+        ids.put("ids", keys);
+        return getItemsFromList(invokeSyncGet("_batch", ids, List.class));
+    }
+
+    /**
      * Updates multiple objects.
      * @param objects the objects to update
      * @param callback Listener called with response object
@@ -491,6 +619,19 @@ public final class ParaClient {
     }
 
     /**
+     * Updates multiple objects.
+     * @param <P> the type of object
+     * @param objects the objects to update
+     * @return a list of objects
+     */
+    public <P extends ParaObject> List<P> updateAllSync(List<P> objects) {
+        if (objects == null || objects.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return getItemsFromList(invokeSyncPatch("_batch", objects, List.class));
+    }
+
+    /**
      * Deletes multiple objects.
      * @param keys the ids of the objects to delete
      * @param callback Listener called with response object
@@ -505,6 +646,19 @@ public final class ParaClient {
         Map<String, Object> ids = new HashMap<String, Object>();
         ids.put("ids", keys);
         invokeDelete("_batch", ids, Map.class, callback, error);
+    }
+
+    /**
+     * Deletes multiple objects.
+     * @param keys the ids of the objects to delete
+     */
+    public void deleteAllSync(List<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return;
+        }
+        Map<String, Object> ids = new HashMap<String, Object>();
+        ids.put("ids", keys);
+        invokeSyncDelete("_batch", ids, null);
     }
 
     /**
@@ -528,6 +682,21 @@ public final class ParaClient {
         }, error);
     }
 
+    /**
+     * Returns a list all objects found for the given type.
+     * The result is paginated so only one page of items is returned, at a time.
+     * @param <P> the type of object
+     * @param type the type of objects to search for
+     * @param pager a {@link Pager}
+     * @return a list of objects
+     */
+    public <P extends ParaObject> List<P> listSync(String type, Pager... pager) {
+        if (StringUtils.isBlank(type)) {
+            return Collections.emptyList();
+        }
+        return getItems(invokeSyncGet(type, pagerToParams(pager), Map.class), pager);
+    }
+
     /////////////////////////////////////////////
     //				 SEARCH
     /////////////////////////////////////////////
@@ -548,6 +717,20 @@ public final class ParaClient {
                 callback.onResponse(list.isEmpty() ? null : list.get(0));
             }
         }, error);
+
+    }
+
+    /**
+     * Simple id search.
+     * @param <P> type of the object
+     * @param id the id
+     * @return the object if found or null
+     */
+    public <P extends ParaObject> P findByIdSync(String id) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("id", id);
+        List<P> list = getItems(findSync("id", params));
+        return list.isEmpty() ? null : list.get(0);
     }
 
     /**
@@ -565,6 +748,18 @@ public final class ParaClient {
                 callback.onResponse(getItems(res));
             }
         }, error);
+    }
+
+    /**
+     * Simple multi id search.
+     * @param <P> type of the object
+     * @param ids a list of ids to search for
+     * @return a list of object found
+     */
+    public <P extends ParaObject> List<P> findByIdsSync(List<String> ids) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("ids", ids);
+        return getItems(findSync("ids", params));
     }
 
     /**
@@ -595,6 +790,28 @@ public final class ParaClient {
     }
 
     /**
+     * Search for Address objects in a radius of X km from a given point.
+     * @param <P> type of the object
+     * @param type the type of object to search for. See {@link ParaObject#getType()}
+     * @param query the query string
+     * @param radius the radius of the search circle
+     * @param lat latitude
+     * @param lng longitude
+     * @param pager a {@link Pager}
+     * @return a list of objects found
+     */
+    public <P extends ParaObject> List<P> findNearbySync(String type, String query, int radius,
+                                                     double lat, double lng, Pager... pager) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("latlng", lat + "," + lng);
+        params.put("radius", Integer.toString(radius));
+        params.put("q", query);
+        params.put("type", type);
+        params.putAll(pagerToParams(pager));
+        return getItems(findSync("nearby", params), pager);
+    }
+
+    /**
      * Searches for objects that have a property which value starts with a given prefix.
      * @param type the type of object to search for. See {@link ParaObject#getType()}
      * @param field the property name of an object
@@ -619,6 +836,25 @@ public final class ParaClient {
     }
 
     /**
+     * Searches for objects that have a property which value starts with a given prefix.
+     * @param <P> type of the object
+     * @param type the type of object to search for. See {@link ParaObject#getType()}
+     * @param field the property name of an object
+     * @param prefix the prefix
+     * @param pager a {@link Pager}
+     * @return a list of objects found
+     */
+    public <P extends ParaObject> List<P> findPrefixSync(String type, String field,
+                                                     String prefix, Pager... pager) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("field", field);
+        params.put("prefix", prefix);
+        params.put("type", type);
+        params.putAll(pagerToParams(pager));
+        return getItems(findSync("prefix", params), pager);
+    }
+
+    /**
      * Simple query string search. This is the basic search method.
      * @param type the type of object to search for. See {@link Sysprop#getType()}
      * @param query the query string
@@ -638,6 +874,22 @@ public final class ParaClient {
                 callback.onResponse(getItems(res, pager));
             }
         }, error);
+    }
+
+    /**
+     * Simple query string search. This is the basic search method.
+     * @param <P> type of the object
+     * @param type the type of object to search for. See {@link ParaObject#getType()}
+     * @param query the query string
+     * @param pager a {@link Pager}
+     * @return a list of objects found
+     */
+    public <P extends ParaObject> List<P> findQuerySync(String type, String query, Pager... pager) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("q", query);
+        params.put("type", type);
+        params.putAll(pagerToParams(pager));
+        return getItems(findSync("", params), pager);
     }
 
     /**
@@ -668,6 +920,28 @@ public final class ParaClient {
     }
 
     /**
+     * Searches for objects that have similar property values to a given text.
+     * A "find like this" query.
+     * @param <P> type of the object
+     * @param type the type of object to search for. See {@link ParaObject#getType()}
+     * @param filterKey exclude an object with this key from the results (optional)
+     * @param fields a list of property names
+     * @param liketext text to compare to
+     * @param pager a {@link Pager}
+     * @return a list of objects found
+     */
+    public <P extends ParaObject> List<P> findSimilarSync(String type, String filterKey, String[] fields,
+                                                      String liketext, Pager... pager) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("fields", fields == null ? null : Arrays.asList(fields));
+        params.put("filterid", filterKey);
+        params.put("like", liketext);
+        params.put("type", type);
+        params.putAll(pagerToParams(pager));
+        return getItems(findSync("similar", params), pager);
+    }
+
+    /**
      * Searches for objects tagged with one or more tags.
      * @param type the type of object to search for. See {@link Sysprop#getType()}
      * @param tags the list of tags
@@ -690,6 +964,22 @@ public final class ParaClient {
     }
 
     /**
+     * Searches for objects tagged with one or more tags.
+     * @param <P> type of the object
+     * @param type the type of object to search for. See {@link ParaObject#getType()}
+     * @param tags the list of tags
+     * @param pager a {@link Pager}
+     * @return a list of objects found
+     */
+    public <P extends ParaObject> List<P> findTaggedSync(String type, String[] tags, Pager... pager) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("tags", tags == null ? null : Arrays.asList(tags));
+        params.put("type", type);
+        params.putAll(pagerToParams(pager));
+        return getItems(findSync("tagged", params), pager);
+    }
+
+    /**
      * Searches for Tag objects.
      * This method might be deprecated in the future.
      * @param keyword the tag keyword to search for
@@ -701,6 +991,19 @@ public final class ParaClient {
                          ErrorListener... error) {
         keyword = (keyword == null) ? "*" : keyword.concat("*");
         findWildcard("tag", "tag", keyword, pager, callback, error);
+    }
+
+    /**
+     * Searches for Tag objects.
+     * This method might be deprecated in the future.
+     * @param <P> type of the object
+     * @param keyword the tag keyword to search for
+     * @param pager a {@link Pager}
+     * @return a list of objects found
+     */
+    public <P extends ParaObject> List<P> findTagsSync(String keyword, Pager... pager) {
+        keyword = (keyword == null) ? "*" : keyword.concat("*");
+        return findWildcardSync("tag", "tag", keyword, pager);
     }
 
     /**
@@ -725,6 +1028,25 @@ public final class ParaClient {
                 callback.onResponse(getItems(res, pager));
             }
         }, error);
+    }
+
+    /**
+     * Searches for objects having a property value that is in list of possible values.
+     * @param <P> type of the object
+     * @param type the type of object to search for. See {@link ParaObject#getType()}
+     * @param field the property name of an object
+     * @param terms a list of terms (property values)
+     * @param pager a {@link Pager}
+     * @return a list of objects found
+     */
+    public <P extends ParaObject> List<P> findTermInListSync(String type, String field,
+                                                             List<String> terms, Pager... pager) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("field", field);
+        params.put("terms", terms);
+        params.put("type", type);
+        params.putAll(pagerToParams(pager));
+        return getItems(findSync("in", params), pager);
     }
 
     /**
@@ -766,6 +1088,38 @@ public final class ParaClient {
     }
 
     /**
+     * Searches for objects that have properties matching some given values. A terms query.
+     * @param <P> type of the object
+     * @param type the type of object to search for. See {@link ParaObject#getType()}
+     * @param terms a map of fields (property names) to terms (property values)
+     * @param matchAll match all terms. If true - AND search, if false - OR search
+     * @param pager a {@link Pager}
+     * @return a list of objects found
+     */
+    public <P extends ParaObject> List<P> findTermsSync(String type, Map<String, ?> terms,
+                                                        boolean matchAll, Pager... pager) {
+        if (terms == null) {
+            return Collections.emptyList();
+        }
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("matchall", Boolean.toString(matchAll));
+        LinkedList<String> list = new LinkedList<String>();
+        for (Map.Entry<String, ? extends Object> term : terms.entrySet()) {
+            String key = term.getKey();
+            Object value = term.getValue();
+            if (value != null) {
+                list.add(key.concat(SEPARATOR).concat(value.toString()));
+            }
+        }
+        if (!terms.isEmpty()) {
+            params.put("terms", list);
+        }
+        params.put("type", type);
+        params.putAll(pagerToParams(pager));
+        return getItems(findSync("terms", params), pager);
+    }
+
+    /**
      * Searches for objects that have a property with a value matching a wildcard query.
      * @param type the type of object to search for. See {@link Sysprop#getType()}
      * @param field the property name of an object
@@ -790,6 +1144,25 @@ public final class ParaClient {
     }
 
     /**
+     * Searches for objects that have a property with a value matching a wildcard query.
+     * @param <P> type of the object
+     * @param type the type of object to search for. See {@link ParaObject#getType()}
+     * @param field the property name of an object
+     * @param wildcard wildcard query string. For example "cat*".
+     * @param pager a {@link Pager}
+     * @return a list of objects found
+     */
+    public <P extends ParaObject> List<P> findWildcardSync(String type, String field,
+                                                           String wildcard, Pager... pager) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("field", field);
+        params.put("q", wildcard);
+        params.put("type", type);
+        params.putAll(pagerToParams(pager));
+        return getItems(findSync("wildcard", params), pager);
+    }
+
+    /**
      * Counts indexed objects.
      * @param type the type of object to search for. See {@link Sysprop#getType()}
      * @param callback Listener called with response object
@@ -806,6 +1179,19 @@ public final class ParaClient {
                 callback.onResponse(pager.getCount());
             }
         }, error);
+    }
+
+    /**
+     * Counts indexed objects.
+     * @param type the type of object to search for. See {@link ParaObject#getType()}
+     * @return the number of results found
+     */
+    public Long getCountSync(String type) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("type", type);
+        Pager pager = new Pager();
+        getItems(findSync("count", params), pager);
+        return pager.getCount();
     }
 
     /**
@@ -844,6 +1230,35 @@ public final class ParaClient {
         }, error);
     }
 
+    /**
+     * Counts indexed objects matching a set of terms/values.
+     * @param type the type of object to search for. See {@link ParaObject#getType()}
+     * @param terms a list of terms (property values)
+     * @return the number of results found
+     */
+    public Long getCountSync(String type, Map<String, ?> terms) {
+        if (terms == null) {
+            return 0L;
+        }
+        Map<String, Object> params = new HashMap<String, Object>();
+        LinkedList<String> list = new LinkedList<String>();
+        for (Map.Entry<String, ? extends Object> term : terms.entrySet()) {
+            String key = term.getKey();
+            Object value = term.getValue();
+            if (value != null) {
+                list.add(key.concat(SEPARATOR).concat(value.toString()));
+            }
+        }
+        if (!terms.isEmpty()) {
+            params.put("terms", list);
+        }
+        params.put("type", type);
+        params.put("count", "true");
+        Pager pager = new Pager();
+        getItems(findSync("terms", params), pager);
+        return pager.getCount();
+    }
+
     private void find(String queryType, Map<String, Object> params,
                       Listener<Map<String, Object>> callback, ErrorListener... error) {
         Map<String, Object> map = new HashMap<String, Object>();
@@ -856,6 +1271,18 @@ public final class ParaClient {
             map.put("totalHits", 0);
         }
         callback.onResponse(map);
+    }
+
+    private Map<String, Object> findSync(String queryType, Map<String, Object> params) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        if (params != null && !params.isEmpty()) {
+            String qType = StringUtils.isBlank(queryType) ? "" : "/".concat(queryType);
+            return invokeSyncGet("search".concat(qType), params, Map.class);
+        } else {
+            map.put("items", Collections.emptyList());
+            map.put("totalHits", 0);
+        }
+        return map;
     }
 
     /////////////////////////////////////////////
@@ -888,6 +1315,24 @@ public final class ParaClient {
     }
 
     /**
+     * Count the total number of links between this object and another type of object.
+     * @param type2 the other type of object
+     * @param obj the object to execute this method on
+     * @return the number of links for the given object
+     */
+    public Long countLinksSync(ParaObject obj, String type2) {
+        if (obj == null || obj.getId() == null || type2 == null) {
+            return 0L;
+        }
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("count", "true");
+        Pager pager = new Pager();
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        getItems(invokeSyncGet(url, params, Map.class), pager);
+        return pager.getCount();
+    }
+
+    /**
      * Returns all objects linked to the given one.
      * Only applicable to many-to-many relationships.
      * @param type2 type of linked objects to search for
@@ -909,6 +1354,23 @@ public final class ParaClient {
                 callback.onResponse(getItems(res, pager));
             }
         }, error);
+    }
+
+    /**
+     * Returns all objects linked to the given one. Only applicable to many-to-many relationships.
+     * @param <P> type of linked objects
+     * @param type2 type of linked objects to search for
+     * @param obj the object to execute this method on
+     * @param pager a {@link Pager}
+     * @return a list of linked objects
+     */
+    public <P extends ParaObject> List<P> getLinkedObjectsSync(ParaObject obj, String type2,
+                                                               Pager... pager) {
+        if (obj == null || obj.getId() == null || type2 == null) {
+            return Collections.emptyList();
+        }
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        return getItems(invokeSyncGet(url, null, Map.class), pager);
     }
 
     /**
@@ -934,6 +1396,21 @@ public final class ParaClient {
     }
 
     /**
+     * Checks if this object is linked to another.
+     * @param type2 the other type
+     * @param id2 the other id
+     * @param obj the object to execute this method on
+     * @return true if the two are linked
+     */
+    public boolean isLinkedSync(ParaObject obj, String type2, String id2) {
+        if (obj == null || obj.getId() == null || type2 == null || id2 == null) {
+            return false;
+        }
+        String url = ClientUtils.formatMessage("{0}/links/{1}/{2}", obj.getObjectURI(), type2, id2);
+        return Boolean.parseBoolean(invokeSyncGet(url, null, String.class));
+    }
+
+    /**
      * Checks if a given object is linked to this one.
      * @param toObj the other object
      * @param obj the object to execute this method on
@@ -947,6 +1424,19 @@ public final class ParaClient {
             return;
         }
         isLinked(obj, toObj.getType(), toObj.getId(), callback, error);
+    }
+
+    /**
+     * Checks if a given object is linked to this one.
+     * @param toObj the other object
+     * @param obj the object to execute this method on
+     * @return true if linked
+     */
+    public boolean isLinkedSync(ParaObject obj, ParaObject toObj) {
+        if (obj == null || obj.getId() == null || toObj == null || toObj.getId() == null) {
+            return false;
+        }
+        return isLinkedSync(obj, toObj.getType(), toObj.getId());
     }
 
     /**
@@ -969,6 +1459,22 @@ public final class ParaClient {
     }
 
     /**
+     * Links an object to this one in a many-to-many relationship.
+     * Only a link is created. Objects are left untouched.
+     * The type of the second object is automatically determined on read.
+     * @param id2 link to the object with this id
+     * @param obj the object to execute this method on
+     * @return the id of the Linker object that is created
+     */
+    public String linkSync(ParaObject obj, String id2) {
+        if (obj == null || obj.getId() == null || id2 == null) {
+            return null;
+        }
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), id2);
+        return invokeSyncPost(url, null, String.class);
+    }
+
+    /**
      * Unlinks an object from this one.
      * Only a link is deleted. Objects are left untouched.
      * @param type2 the other type
@@ -987,6 +1493,21 @@ public final class ParaClient {
     }
 
     /**
+     * Unlinks an object from this one.
+     * Only a link is deleted. Objects are left untouched.
+     * @param type2 the other type
+     * @param obj the object to execute this method on
+     * @param id2 the other id
+     */
+    public void unlinkSync(ParaObject obj, String type2, String id2) {
+        if (obj == null || obj.getId() == null || type2 == null || id2 == null) {
+            return;
+        }
+        String url = ClientUtils.formatMessage("{0}/links/{1}/{2}", obj.getObjectURI(), type2, id2);
+        invokeSyncDelete(url, null, Map.class);
+    }
+
+    /**
      * Unlinks all objects that are linked to this one.
      * @param obj the object to execute this method on
      * Only Linker objects are deleted.
@@ -1001,6 +1522,20 @@ public final class ParaClient {
         }
         String url = ClientUtils.formatMessage("{0}/links", obj.getObjectURI());
         invokeDelete(url, null, Map.class, callback, error);
+    }
+
+    /**
+     * Unlinks all objects that are linked to this one.
+     * @param obj the object to execute this method on
+     * Only Linker objects are deleted.
+     * {@link com.erudika.para.core.ParaObject}s are left untouched.
+     */
+    public void unlinkAllSync(ParaObject obj) {
+        if (obj == null || obj.getId() == null) {
+            return;
+        }
+        String url = ClientUtils.formatMessage("{0}/links", obj.getObjectURI());
+        invokeSyncDelete(url, null, Map.class);
     }
 
     /**
@@ -1030,6 +1565,25 @@ public final class ParaClient {
     }
 
     /**
+     * Count the total number of child objects for this object.
+     * @param type2 the type of the other object
+     * @param obj the object to execute this method on
+     * @return the number of links
+     */
+    public Long countChildrenSync(ParaObject obj, String type2) {
+        if (obj == null || obj.getId() == null || type2 == null) {
+            return 0L;
+        }
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("count", "true");
+        params.put("childrenonly", "true");
+        Pager pager = new Pager();
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        getItems(invokeSyncGet(url, params, Map.class), pager);
+        return pager.getCount();
+    }
+
+    /**
      * Returns all child objects linked to this object.
      * @param type2 the type of children to look for
      * @param obj the object to execute this method on
@@ -1052,6 +1606,24 @@ public final class ParaClient {
                 callback.onResponse(getItems(res, pager));
             }
         }, error);
+    }
+
+    /**
+     * Returns all child objects linked to this object.
+     * @param <P> the type of children
+     * @param type2 the type of children to look for
+     * @param obj the object to execute this method on
+     * @param pager a {@link Pager}
+     * @return a list of {@link ParaObject} in a one-to-many relationship with this object
+     */
+    public <P extends ParaObject> List<P> getChildrenSync(ParaObject obj, String type2, Pager... pager) {
+        if (obj == null || obj.getId() == null || type2 == null) {
+            return Collections.emptyList();
+        }
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("childrenonly", "true");
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        return getItems(invokeSyncGet(url, params, Map.class), pager);
     }
 
     /**
@@ -1084,6 +1656,29 @@ public final class ParaClient {
     }
 
     /**
+     * Returns all child objects linked to this object.
+     * @param <P> the type of children
+     * @param type2 the type of children to look for
+     * @param field the field name to use as filter
+     * @param term the field value to use as filter
+     * @param obj the object to execute this method on
+     * @param pager a {@link Pager}
+     * @return a list of {@link ParaObject} in a one-to-many relationship with this object
+     */
+    public <P extends ParaObject> List<P> getChildrenSync(ParaObject obj, String type2, String field,
+                                                          String term, Pager... pager) {
+        if (obj == null || obj.getId() == null || type2 == null) {
+            return Collections.emptyList();
+        }
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("childrenonly", "true");
+        params.put("field", field);
+        params.put("term", term);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        return getItems(invokeSyncGet(url, params, Map.class), pager);
+    }
+
+    /**
      * Deletes all child objects permanently.
      * @param obj the object to execute this method on
      * @param type2 the children's type.
@@ -1100,6 +1695,21 @@ public final class ParaClient {
         params.put("childrenonly", "true");
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
         invokeDelete(url, params, Map.class, callback, error);
+    }
+
+    /**
+     * Deletes all child objects permanently.
+     * @param obj the object to execute this method on
+     * @param type2 the children's type.
+     */
+    public void deleteChildrenSync(ParaObject obj, String type2) {
+        if (obj == null || obj.getId() == null || type2 == null) {
+            return;
+        }
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("childrenonly", "true");
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        invokeSyncDelete(url, params, Map.class);
     }
 
     /////////////////////////////////////////////
@@ -1120,6 +1730,15 @@ public final class ParaClient {
     }
 
     /**
+     * Generates a new unique id.
+     * @return a new id
+     */
+    public String newIdSync() {
+        String res = invokeSyncGet("utils/newid", null, String.class);
+        return res != null ? res : "";
+    }
+
+    /**
      * Returns the current timestamp.
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
@@ -1130,6 +1749,15 @@ public final class ParaClient {
                 callback.onResponse(res != null ? Long.decode(res) : 0L);
             }
         }, error);
+    }
+
+    /**
+     * Returns the current timestamp.
+     * @return a long number
+     */
+    public long getTimestampSync() {
+        Long res = Long.decode(invokeSyncGet("utils/timestamp", null, String.class));
+        return res != null ? res : 0L;
     }
 
     /**
@@ -1148,6 +1776,19 @@ public final class ParaClient {
     }
 
     /**
+     * Formats a date in a specific format.
+     * @param format the date format
+     * @param loc the locale instance
+     * @return a formatted date
+     */
+    public String formatDateSync(String format, Locale loc) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("format", format);
+        params.put("locale", loc == null ? null : loc.toString());
+        return invokeSyncGet("utils/formatdate", params, String.class);
+    }
+
+    /**
      * Converts spaces to dashes.
      * @param str a string with spaces
      * @param replaceWith a string to replace spaces with
@@ -1160,6 +1801,19 @@ public final class ParaClient {
         params.put("string", str);
         params.put("replacement", replaceWith);
         invokeGet("utils/nospaces", params, String.class, callback, error);
+    }
+
+    /**
+     * Converts spaces to dashes.
+     * @param str a string with spaces
+     * @param replaceWith a string to replace spaces with
+     * @return a string with dashes
+     */
+    public String noSpacesSync(String str, String replaceWith) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("string", str);
+        params.put("replacement", replaceWith);
+        return invokeSyncGet("utils/nospaces", params, String.class);
     }
 
     /**
@@ -1176,6 +1830,17 @@ public final class ParaClient {
     }
 
     /**
+     * Strips all symbols, punctuation, whitespace and control chars from a string.
+     * @param str a dirty string
+     * @return a clean string
+     */
+    public String stripAndTrimSync(String str) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("string", str);
+        return invokeSyncGet("utils/nosymbols", params, String.class);
+    }
+
+    /**
      * Converts Markdown to HTML
      * @param markdownString Markdown
      * @param callback Listener called with response object
@@ -1189,6 +1854,17 @@ public final class ParaClient {
     }
 
     /**
+     * Converts Markdown to HTML
+     * @param markdownString Markdown
+     * @return HTML
+     */
+    public String markdownToHtmlSync(String markdownString) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("md", markdownString);
+        return invokeSyncGet("utils/md2html", params, String.class);
+    }
+
+    /**
      * Returns the number of minutes, hours, months elapsed for a time delta (milliseconds).
      * @param delta the time delta between two events, in milliseconds
      * @param callback Listener called with response object
@@ -1199,6 +1875,17 @@ public final class ParaClient {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("delta", Long.toString(delta));
         invokeGet("utils/timeago", params, String.class, callback, error);
+    }
+
+    /**
+     * Returns the number of minutes, hours, months elapsed for a time delta (milliseconds).
+     * @param delta the time delta between two events, in milliseconds
+     * @return a string like "5m", "1h"
+     */
+    public String approximatelySync(long delta) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("delta", Long.toString(delta));
+        return invokeSyncGet("utils/timeago", params, String.class);
     }
 
     /////////////////////////////////////////////
@@ -1226,12 +1913,33 @@ public final class ParaClient {
     }
 
     /**
+     * Generates a new set of access/secret keys.
+     * Old keys are discarded and invalid after this.
+     * @return a map of new credentials
+     */
+    public Map<String, String> newKeysSync() {
+        Map<String, String> keys = invokeSyncPost("_newkeys", null, Map.class);
+        if (keys != null && keys.containsKey("secretKey")) {
+            this.secretKey = keys.get("secretKey");
+        }
+        return keys;
+    }
+
+    /**
      * Returns all registered types for this App.
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
     public void types(Listener<Map<String, String>> callback, ErrorListener... error) {
         invokeGet("_types", null, Map.class, callback, error);
+    }
+
+    /**
+     * Returns all registered types for this App.
+     * @return a map of plural-singular form of all the registered types.
+     */
+    public Map<String, String> typesSync() {
+        return invokeSyncGet("_types", null, Map.class);
     }
 
     /**
@@ -1242,6 +1950,15 @@ public final class ParaClient {
      */
     public void me(Listener<? extends ParaObject> callback, ErrorListener... error) {
         invokeGet("_me", null, Sysprop.class, callback, error);
+    }
+
+    /**
+     * Returns a User or an App that is currently authenticated.
+     * @param <P> an App or User
+     * @return a User or an App
+     */
+    public <P extends ParaObject> P meSync() {
+        return (P) invokeSyncGet("_me", null, Sysprop.class);
     }
 
     /////////////////////////////////////////////
@@ -1260,6 +1977,14 @@ public final class ParaClient {
 
     /**
      * Returns the validation constraints map.
+     * @return a map containing all validation constraints.
+     */
+    public Map<String, Map<String, Map<String, Map<String, ?>>>> validationConstraintsSync() {
+        return invokeSyncGet("_constraints", null, Map.class);
+    }
+
+    /**
+     * Returns the validation constraints map.
      * @param type a type
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
@@ -1268,6 +1993,15 @@ public final class ParaClient {
             Map<String, Map<String, ?>>>>> callback, ErrorListener... error) {
         invokeGet(ClientUtils.formatMessage("_constraints/{0}", type),
                 null, Map.class, callback, error);
+    }
+
+    /**
+     * Returns the validation constraints map.
+     * @param type a type
+     * @return a map containing all validation constraints for this type.
+     */
+    public Map<String, Map<String, Map<String, Map<String, ?>>>> validationConstraintsSync(String type) {
+        return invokeSyncGet(ClientUtils.formatMessage("_constraints/{0}", type), null, Map.class);
     }
 
     /**
@@ -1290,6 +2024,22 @@ public final class ParaClient {
     }
 
     /**
+     * Add a new constraint for a given field.
+     * @param type a type
+     * @param field a field name
+     * @param c the constraint
+     * @return a map containing all validation constraints for this type.
+     */
+    public Map<String, Map<String, Map<String, Map<String, ?>>>> addValidationConstraintSync(
+            String type, String field, Constraint c) {
+        if (StringUtils.isBlank(type) || StringUtils.isBlank(field) || c == null) {
+            return Collections.emptyMap();
+        }
+        return invokeSyncPut(ClientUtils.formatMessage("_constraints/{0}/{1}/{2}", type,
+                field, c.getName()), c.getPayload(), Map.class);
+    }
+
+    /**
      * Removes a validation constraint for a given field.
      * @param type a type
      * @param field a field name
@@ -1309,6 +2059,23 @@ public final class ParaClient {
                 field, constraintName), null, Map.class, callback, error);
     }
 
+    /**
+     * Removes a validation constraint for a given field.
+     * @param type a type
+     * @param field a field name
+     * @param constraintName the name of the constraint to remove
+     * @return a map containing all validation constraints for this type.
+     */
+    public Map<String, Map<String, Map<String, Map<String, ?>>>> removeValidationConstraintSync(
+            String type, String field, String constraintName) {
+        if (StringUtils.isBlank(type) || StringUtils.isBlank(field) ||
+                StringUtils.isBlank(constraintName)) {
+            return Collections.emptyMap();
+        }
+        return invokeSyncDelete(ClientUtils.formatMessage("_constraints/{0}/{1}/{2}", type,
+                field, constraintName), null, Map.class);
+    }
+
     /////////////////////////////////////////////
     //			Resource Permissions
     /////////////////////////////////////////////
@@ -1324,6 +2091,14 @@ public final class ParaClient {
     }
 
     /**
+     * Returns the permissions for all subjects and resources for current app.
+     * @return a map of subject ids to resource names to a list of allowed methods
+     */
+    public Map<String, Map<String, List<String>>> resourcePermissionsSync() {
+        return invokeSyncGet("_permissions", null, Map.class);
+    }
+
+    /**
      * Returns only the permissions for a given subject (user) of the current app.
      * @param subjectid the subject id (user id)
      * @param callback Listener called with response object
@@ -1333,6 +2108,15 @@ public final class ParaClient {
                                     ErrorListener... error) {
         invokeGet(ClientUtils.formatMessage("_permissions/{0}", subjectid),
                 null, Map.class, callback, error);
+    }
+
+    /**
+     * Returns only the permissions for a given subject (user) of the current app.
+     * @param subjectid the subject id (user id)
+     * @return a map of subject ids to resource names to a list of allowed methods
+     */
+    public Map<String, Map<String, List<String>>> resourcePermissionsSync(String subjectid) {
+        return invokeSyncGet(ClientUtils.formatMessage("_permissions/{0}", subjectid), null, Map.class);
     }
 
     /**
@@ -1356,6 +2140,23 @@ public final class ParaClient {
     }
 
     /**
+     * Grants a permission to a subject that allows them to call the
+     * specified HTTP methods on a given resource.
+     * @param subjectid subject id (user id)
+     * @param resourcePath resource path or object type (URL encoded)
+     * @param permission a set of HTTP methods
+     * @return a map of the permissions for this subject id
+     */
+    public Map<String, Map<String, List<String>>> grantResourcePermissionSync(String subjectid,
+                      String resourcePath, String[] permission) {
+        if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourcePath) || permission == null) {
+            return Collections.emptyMap();
+        }
+        return invokeSyncPut(ClientUtils.formatMessage("_permissions/{0}/{1}", subjectid, resourcePath),
+                permission, Map.class);
+    }
+
+    /**
      * Revokes a permission for a subject, meaning they
      * no longer will be able to access the given resource.
      * @param subjectid subject id (user id)
@@ -1375,6 +2176,22 @@ public final class ParaClient {
     }
 
     /**
+     * Revokes a permission for a subject, meaning they no longer
+     * will be able to access the given resource.
+     * @param subjectid subject id (user id)
+     * @param resourcePath resource path or object type (URL encoded)
+     * @return a map of the permissions for this subject id
+     */
+    public Map<String, Map<String, List<String>>> revokeResourcePermissionSync(String subjectid,
+                                                                               String resourcePath) {
+        if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourcePath)) {
+            return Collections.emptyMap();
+        }
+        return invokeSyncDelete(ClientUtils.formatMessage("_permissions/{0}/{1}", subjectid, resourcePath),
+                null, Map.class);
+    }
+
+    /**
      * Revokes all permission for a subject.
      * @param subjectid subject id (user id)
      * @param callback Listener called with response object
@@ -1389,6 +2206,19 @@ public final class ParaClient {
         }
         invokeDelete(ClientUtils.formatMessage("_permissions/{0}", subjectid),
                 null, Map.class, callback, error);
+    }
+
+    /**
+     * Revokes all permission for a subject.
+     * @param subjectid subject id (user id)
+     * @return a map of the permissions for this subject id
+     */
+    public Map<String, Map<String, List<String>>> revokeAllResourcePermissionsSync(String subjectid) {
+        if (StringUtils.isBlank(subjectid)) {
+            return Collections.emptyMap();
+        }
+        return invokeSyncDelete(ClientUtils.formatMessage("_permissions/{0}", subjectid),
+                null, Map.class);
     }
 
     /**
@@ -1415,6 +2245,23 @@ public final class ParaClient {
         }, error);
     }
 
+    /**
+     * Checks if a subject is allowed to call method X on resource Y.
+     * @param subjectid subject id
+     * @param resourcePath resource path or object type (URL encoded)
+     * @param httpMethod HTTP method name
+     * @return true if allowed
+     */
+    public boolean isAllowedToSync(String subjectid, String resourcePath, String httpMethod) {
+        if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourcePath) ||
+                StringUtils.isBlank(httpMethod)) {
+            return false;
+        }
+        String url = ClientUtils.formatMessage("_permissions/{0}/{1}/{2}",
+                subjectid, resourcePath, httpMethod);
+        return Boolean.parseBoolean(invokeSyncGet(url, null, String.class));
+    }
+
     /////////////////////////////////////////////
     //				Access Tokens
     /////////////////////////////////////////////
@@ -1432,7 +2279,6 @@ public final class ParaClient {
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
-    @SuppressWarnings("unchecked")
     public void signIn(String provider, String providerToken, final Listener<Sysprop> callback,
                        final ErrorListener... error) {
         if (!StringUtils.isBlank(provider) && !StringUtils.isBlank(providerToken)) {
@@ -1472,6 +2318,39 @@ public final class ParaClient {
                 callback.onResponse(null);
             }
         }
+    }
+
+    /**
+     * Takes an identity provider access token and fetches the user data from that provider.
+     * A new User object is created if that user doesn't exist.
+     * Access tokens are returned upon successful authentication using one of the SDKs from
+     * Facebook, Google, Twitter, etc.
+     * <b>Note:</b> Twitter uses OAuth 1 and gives you a token and a token secret.
+     * <b>You must concatenate them like this: <code>{oauth_token}:{oauth_token_secret}</code> and
+     * use that as the provider access token.</b>
+     * @param provider identity provider, e.g. 'facebook', 'google'...
+     * @param providerToken access token from a provider like Facebook, Google, Twitter
+     * @return a User object or null if something failed
+     */
+    public Sysprop signInSync(String provider, String providerToken) {
+        if (!StringUtils.isBlank(provider) && !StringUtils.isBlank(providerToken)) {
+            Map<String, String> credentials = new HashMap<String, String>();
+            credentials.put("appid", accessKey);
+            credentials.put("provider", provider);
+            credentials.put("token", providerToken);
+            Map<String, Object> result = invokeSyncPost(JWT_PATH, credentials, Map.class);
+            if (result != null && result.containsKey("user") && result.containsKey("jwt")) {
+                Map<?, ?> jwtData = (Map<?, ?>) result.get("jwt");
+                Map<String, Object> userData = (Map<String, Object>) result.get("user");
+                tokenKey = (String) jwtData.get("access_token");
+                tokenKeyExpires = (Long) jwtData.get("expires");
+                tokenKeyNextRefresh = (Long) jwtData.get("refresh");
+                return ClientUtils.setFields(Sysprop.class, userData);
+            } else {
+                clearAccessToken();
+            }
+        }
+        return null;
     }
 
     /**
@@ -1529,6 +2408,32 @@ public final class ParaClient {
     }
 
     /**
+     * Refreshes the JWT access token. This requires a valid existing token.
+     *	Call signIn() first.
+     * @return true if token was refreshed
+     */
+    protected boolean refreshTokenSync() {
+        long now = System.currentTimeMillis();
+        boolean notExpired = tokenKeyExpires != null && tokenKeyExpires > now;
+        boolean canRefresh = tokenKeyNextRefresh != null &&
+                (tokenKeyNextRefresh < now || tokenKeyNextRefresh > tokenKeyExpires);
+        // token present and NOT expired
+        if (tokenKey != null && notExpired && canRefresh) {
+            Map<String, Object> result = invokeSyncGet(JWT_PATH, null, Map.class);
+            if (result != null && result.containsKey("user") && result.containsKey("jwt")) {
+                Map<?, ?> jwtData = (Map<?, ?>) result.get("jwt");
+                tokenKey = (String) jwtData.get("access_token");
+                tokenKeyExpires = (Long) jwtData.get("expires");
+                tokenKeyNextRefresh = (Long) jwtData.get("refresh");
+                return true;
+            } else {
+                clearAccessToken();
+            }
+        }
+        return false;
+    }
+
+    /**
      * Revokes all user tokens for a given user id.
      * This would be equivalent to "logout everywhere".
      * <b>Note:</b> Generating a new API secret on the server will also invalidate all client tokens.
@@ -1544,6 +2449,17 @@ public final class ParaClient {
                 }
             }
         }, error);
+    }
+
+    /**
+     * Revokes all user tokens for a given user id.
+     * This would be equivalent to "logout everywhere".
+     * <b>Note:</b> Generating a new API secret on the server will also invalidate all client tokens.
+     * Requires a valid existing token.
+     * @return true if successful
+     */
+    public boolean revokeAllTokensSync() {
+        return invokeSyncDelete(JWT_PATH, null, Map.class) != null;
     }
 
 }
