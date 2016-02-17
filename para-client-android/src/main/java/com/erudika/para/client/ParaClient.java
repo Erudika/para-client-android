@@ -44,6 +44,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,6 +70,7 @@ public final class ParaClient {
     private final Signer signer = new Signer();
     private Context ctx;
     private String trustedHostname;
+    private int requestTimeout;
 
     private RequestQueue requestQueue;
 
@@ -80,7 +82,7 @@ public final class ParaClient {
         this.tokenKey = ClientUtils.loadPref("tokenKey", ctx);
         this.tokenKeyExpires = Long.getLong(ClientUtils.loadPref("tokenKeyExpires", ctx));
         this.tokenKeyNextRefresh = Long.getLong(ClientUtils.loadPref("tokenKeyNextRefresh", ctx));
-
+        this.requestTimeout = NumberUtils.toInt(System.getProperty("para.client.timeout", "30"));
         if (StringUtils.isBlank(secretKey)) {
             logger.warn("Secret key not provided. Make sure you call 'signIn()' first.");
         }
@@ -267,9 +269,9 @@ public final class ParaClient {
         boolean refreshJWT = !(method == GET && JWT_PATH.equals(resourcePath));
         getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(refreshJWT),
                 method, getEndpoint(), getFullPath(resourcePath), null, params,
-                entity, returnType, future, error));
+                entity, returnType, future, future));
         try {
-            return future.get(5, TimeUnit.SECONDS);
+            return future.get(requestTimeout, TimeUnit.SECONDS);
         } catch (Exception e) {
             error.onErrorResponse(new VolleyError(e));
         }
