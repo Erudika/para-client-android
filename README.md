@@ -3,6 +3,7 @@
 
 # Android Client for Para
 [ ![Download](https://api.bintray.com/packages/erudika/releases/para-client-android/images/download.svg) ](https://bintray.com/erudika/releases/para-client-android/_latestVersion)
+[![Join the chat at https://gitter.im/Erudika/para](https://badges.gitter.im/Erudika/para.svg)](https://gitter.im/Erudika/para?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ## What is this?
 
