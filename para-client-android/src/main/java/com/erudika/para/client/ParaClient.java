@@ -42,7 +42,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -277,16 +276,6 @@ public final class ParaClient {
             error.onErrorResponse(new VolleyError(e));
         }
         return null;
-    }
-
-    private <T> Future<T> invokeSignedSyncRequestTest(int method, String resourcePath, Map<String, Object> params,
-                                          Object entity, Class<T> returnType) {
-        RequestFuture<T> future = RequestFuture.newFuture();
-        boolean refreshJWT = !(method == GET && JWT_PATH.equals(resourcePath));
-        getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(refreshJWT),
-                method, getEndpoint(), getFullPath(resourcePath), null, params,
-                entity, returnType, future, future));
-        return future;
     }
 
     private void invokeGet(String resourcePath, Map<String, Object> params, Class<?> returnType,
@@ -1972,15 +1961,6 @@ public final class ParaClient {
      */
     public <P extends ParaObject> P meSync() {
         return (P) invokeSyncGet("_me", null, Sysprop.class);
-    }
-
-    /**
-     * DO NOT USE - for testing only.
-     * @param <P> param
-     * @return user or app
-     */
-    public <P extends ParaObject> Future<P> meSyncTest() {
-        return (Future<P>) invokeSignedSyncRequestTest(GET, "_me", null, null, Sysprop.class);
     }
 
     /////////////////////////////////////////////
