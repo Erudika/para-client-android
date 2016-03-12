@@ -104,15 +104,7 @@ public final class Signer extends AWS4Signer {
                        Map<String, String> headers, Map<String, String> params, InputStream entity) {
 
         DefaultRequest<AmazonWebServiceRequest> r = new DefaultRequest<AmazonWebServiceRequest>(PARA);
-        String method;
-        switch (httpMethod) {
-            case Request.Method.GET: method = "GET"; break;
-            case Request.Method.PUT: method = "PUT"; break;
-            case Request.Method.POST: method = "POST"; break;
-            case Request.Method.PATCH: method = "PATCH"; break;
-            case Request.Method.DELETE: method = "DELETE"; break;
-            default: method = "GET";
-        }
+        String method = getMethodString(httpMethod);
         r.setHttpMethod(HttpMethodName.valueOf(method));
         if (!StringUtils.isBlank(endpoint)) {
             if (!endpoint.startsWith("http")) {
@@ -219,8 +211,12 @@ public final class Signer extends AWS4Signer {
         if (isJWT) {
             headers.put("Authorization", secretKey);
         } else {
-            headers.put("Authorization", signedHeaders.get("Authorization"));
-            headers.put("X-Amz-Date", signedHeaders.get("X-Amz-Date"));
+            if (signedHeaders.containsKey("Authorization")) {
+                headers.put("Authorization", signedHeaders.get("Authorization"));
+            }
+            if (signedHeaders.containsKey("X-Amz-Date")) {
+                headers.put("X-Amz-Date", signedHeaders.get("X-Amz-Date"));
+            }
         }
 
         return new ParaRequest(httpMethod, url, headers, entity, type, success, error);
@@ -242,10 +238,16 @@ public final class Signer extends AWS4Signer {
                int httpMethod, String endpointURL, String reqPath,
                Map<String, String> headers, Map<String, Object> params, byte[] jsonEntity) {
 
-        if (StringUtils.isBlank(accessKey) || StringUtils.isBlank(secretKey)) {
-            logger.warn("Blank access key or secret key for: {} {}", httpMethod, reqPath);
-            accessKey = "";
-            secretKey = "";
+        if (StringUtils.isBlank(accessKey)) {
+            logger.error("Blank access key: {} {}", getMethodString(httpMethod), reqPath);
+            return headers;
+        }
+
+        if (StringUtils.isBlank(secretKey)) {
+            logger.debug("Anonymous request: {} {}", getMethodString(httpMethod), reqPath);
+            // guest access
+            headers.put("Authorization", "Anonymous " + accessKey);
+            return headers;
         }
 
         if (httpMethod < 0 || httpMethod > 7) {
@@ -278,6 +280,21 @@ public final class Signer extends AWS4Signer {
         }
 
         return sign(httpMethod, endpointURL, reqPath, headers, sigParams, in, accessKey, secretKey);
+    }
+
+    private String getMethodString(int httpMethod) {
+        String method;
+        switch (httpMethod) {
+            case Request.Method.GET: method = "GET"; break;
+            case Request.Method.PUT: method = "PUT"; break;
+            case Request.Method.POST: method = "POST"; break;
+            case Request.Method.HEAD: method = "HEAD"; break;
+            case Request.Method.PATCH: method = "PATCH"; break;
+            case Request.Method.DELETE: method = "DELETE"; break;
+            case Request.Method.OPTIONS: method = "OPTIONS"; break;
+            default: method = "GET";
+        }
+        return method;
     }
 
     private byte[] jsonBytes(Object o) {

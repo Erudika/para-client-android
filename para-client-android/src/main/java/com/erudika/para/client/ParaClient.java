@@ -1070,7 +1070,7 @@ public final class ParaClient {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("matchall", Boolean.toString(matchAll));
         LinkedList<String> list = new LinkedList<String>();
-        for (Map.Entry<String, ? extends Object> term : terms.entrySet()) {
+        for (Map.Entry<String, ?> term : terms.entrySet()) {
             String key = term.getKey();
             Object value = term.getValue();
             if (value != null) {
@@ -1106,7 +1106,7 @@ public final class ParaClient {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("matchall", Boolean.toString(matchAll));
         LinkedList<String> list = new LinkedList<String>();
-        for (Map.Entry<String, ? extends Object> term : terms.entrySet()) {
+        for (Map.Entry<String, ?> term : terms.entrySet()) {
             String key = term.getKey();
             Object value = term.getValue();
             if (value != null) {
@@ -1211,7 +1211,7 @@ public final class ParaClient {
         }
         Map<String, Object> params = new HashMap<String, Object>();
         LinkedList<String> list = new LinkedList<String>();
-        for (Map.Entry<String, ? extends Object> term : terms.entrySet()) {
+        for (Map.Entry<String, ?> term : terms.entrySet()) {
             String key = term.getKey();
             Object value = term.getValue();
             if (value != null) {
@@ -1244,7 +1244,7 @@ public final class ParaClient {
         }
         Map<String, Object> params = new HashMap<String, Object>();
         LinkedList<String> list = new LinkedList<String>();
-        for (Map.Entry<String, ? extends Object> term : terms.entrySet()) {
+        for (Map.Entry<String, ?> term : terms.entrySet()) {
             String key = term.getKey();
             Object value = term.getValue();
             if (value != null) {

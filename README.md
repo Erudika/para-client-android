@@ -7,9 +7,10 @@
 
 ## What is this?
 
-**Para** was designed as a simple and modular back-end framework for object persistence and retrieval.
-It enables your application to store objects directly to a data store (NoSQL) or any relational database (RDBMS)
-and it also automatically indexes those objects and makes them searchable.
+**Para** was designed as a simple and modular backend framework for object persistence and retrieval.
+It helps you build applications faster by taking care of the backend. It works on three levels -
+objects are stored in a NoSQL data store or any old relational database, then automatically indexed
+by a search engine and finally, cached.
 
 This is the Android client for Para.
 
@@ -37,7 +38,8 @@ client.signIn("facebook", "fb_access_token", new Response.Listener<ParaObject>()
 });
 ```
 
-The Android client uses Volley for HTTP requests so all requests are asynchronous.
+The Android client uses Volley for HTTP requests so all requests are asynchronous, unless you use
+the methods that end in `Sync()`. These methods are executed synchronously and will block.
 Each method takes a callback (Listener) in which the result is returned.
 
 To trust a self-signed TLS certificate use the method `pc.trustHostnameCertificates(hostname)`:
@@ -45,7 +47,6 @@ To trust a self-signed TLS certificate use the method `pc.trustHostnameCertifica
 ParaClient pc = new ParaClient(myAppId, null, applicationContext);
 pc.trustHostnameCertificates("myhost.com");
 ```
-
 
 ## Documentation
 
