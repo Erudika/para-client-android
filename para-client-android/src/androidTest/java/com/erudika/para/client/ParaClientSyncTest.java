@@ -54,6 +54,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
 
     private static final Logger logger = LoggerFactory.getLogger(ParaClientSyncTest.class);
     private ParaClient pc;
+    private ParaClient pc2;
     private static final String catsType = "cat";
     private static final String dogsType = "dog";
     private static final String APP_ID = "app:para";
@@ -82,6 +83,14 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
             pc.setEndpoint("http://192.168.0.113:8080");
         }
         return pc;
+    }
+
+    private ParaClient pc2() {
+        if (pc2 == null) {
+            pc2 = new ParaClient("app:para", null, ctx);
+            pc2.setEndpoint("http://192.168.0.113:8080");
+        }
+        return pc2;
     }
 
     private Sysprop u() {
@@ -566,6 +575,11 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         assertTrue(permits.get(u1().getId()).containsKey(dogsType));
         assertTrue(pc().isAllowedToSync(u1().getId(), dogsType, "GET"));
         assertFalse(pc().isAllowedToSync(u1().getId(), dogsType, "POST"));
+        // anonymous permissions
+        assertFalse(pc().isAllowedToSync(ALLOW_ALL, "utils/timestamp", "GET"));
+        assertNotNull(pc().grantResourcePermissionSync(ALLOW_ALL, "utils/timestamp", new String[]{"GET"}, true));
+        assertTrue(pc2().getTimestampSync() > 0);
+        assertFalse(pc().isAllowedToSync(ALLOW_ALL, "utils/timestamp", "DELETE"));
 
         permits = pc().resourcePermissionsSync();
         assertTrue(permits.containsKey(u1().getId()));

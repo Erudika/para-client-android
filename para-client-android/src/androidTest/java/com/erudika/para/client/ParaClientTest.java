@@ -53,6 +53,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
 
     private static final Logger logger = LoggerFactory.getLogger(ParaClientTest.class);
     private ParaClient pc;
+    private ParaClient pc2;
     private static final String catsType = "cat";
     private static final String dogsType = "dog";
     private static final String APP_ID = "app:para";
@@ -81,6 +82,14 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
             pc.setEndpoint("http://192.168.0.113:8080");
         }
         return pc;
+    }
+
+    private ParaClient pc2() {
+        if (pc2 == null) {
+            pc2 = new ParaClient("app:para", null, ctx);
+            pc2.setEndpoint("http://192.168.0.113:8080");
+        }
+        return pc2;
     }
 
     private Sysprop u() {
@@ -1026,7 +1035,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
 
         pc().grantResourcePermission(u1().getId(), dogsType, new String[]{"GET"},
                 new Listener<Map<String, Map<String, List<String>>>>() {
-            public void onResponse(Map<String, Map<String, List<String>>> res) {
+            public void onResponse(final Map<String, Map<String, List<String>>> res) {
                 pc().resourcePermissions(u1().getId(), new Listener<Map<String, Map<String, List<String>>>>() {
                     public void onResponse(Map<String, Map<String, List<String>>> permits) {
                         assertTrue(permits.containsKey(u1().getId()));
@@ -1045,6 +1054,30 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
                         });
                     }
                 });
+
+                // anonymous permissions
+                pc().isAllowedTo(ALLOW_ALL, "utils/timestamp", "GET", new Listener<Boolean>() {
+                    public void onResponse(Boolean res) {
+                        assertFalse(res);
+                    }
+                });
+                pc().grantResourcePermission(ALLOW_ALL, "utils/timestamp", new String[]{"GET"}, true,
+                    new Listener<Map<String, Map<String, List<String>>>>() {
+                        public void onResponse(Map<String, Map<String, List<String>>> res) {
+                            assertNotNull(res);
+                            pc2().getTimestamp(new Listener<Long>() {
+                                public void onResponse(Long res) {
+                                    assertTrue(res > 0);
+                                }
+                            });
+
+                            pc().isAllowedTo("*", "utils/timestamp", "DELETE", new Listener<Boolean>() {
+                                public void onResponse(Boolean res) {
+                                    assertFalse(res);
+                                }
+                            });
+                        }
+                    });
 
                 pc().resourcePermissions(new Listener<Map<String, Map<String, List<String>>>>() {
                     public void onResponse(Map<String, Map<String, List<String>>> permits) {
