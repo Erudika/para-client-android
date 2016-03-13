@@ -33,6 +33,7 @@ import org.apache.commons.lang3.StringUtils;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
 import java.text.MessageFormat;
@@ -53,6 +54,7 @@ import javax.net.ssl.X509TrustManager;
 public final class ClientUtils {
 
     public static final String ALLOW_ALL = "*";
+    public static final String GUEST = "?";
     private static final String PREFS_FILE = "ParaClientPrefs";
     private static final ObjectMapper jsonMapper = new ObjectMapper();
     private static final ObjectReader jsonReader;
@@ -216,6 +218,24 @@ public final class ClientUtils {
             u = null;
         }
         return u;
+    }
+
+    /**
+     * URL-encodes a string
+     * @param s a string
+     * @return the encoded string
+     */
+    public static String urlEncode(String s) {
+        if (s == null) {
+            return "";
+        }
+        String encoded;
+        try {
+            encoded = URLEncoder.encode(s, "UTF-8");
+        } catch (UnsupportedEncodingException ex) {
+            encoded = s;
+        }
+        return encoded;
     }
 
     /**

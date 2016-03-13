@@ -2125,19 +2125,41 @@ public final class ParaClient {
      * Grants a permission to a subject that allows them to
      * call the specified HTTP methods on a given resource.
      * @param subjectid subject id (user id)
-     * @param resourceName resource name or object type
+     * @param resourcePath resource path or object type
      * @param permission an array of allowed HTTP methods
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
-    public void grantResourcePermission(String subjectid, String resourceName, String[] permission,
+    public void grantResourcePermission(String subjectid, String resourcePath, String[] permission,
                                         Listener<Map<String, Map<String, List<String>>>> callback,
                                         ErrorListener... error) {
-        if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourceName) || permission == null) {
+        grantResourcePermission(subjectid, resourcePath, permission, false, callback, error);
+    }
+
+    /**
+     * Grants a permission to a subject that allows them to
+     * call the specified HTTP methods on a given resource.
+     * @param subjectid subject id (user id)
+     * @param resourcePath resource path or object type
+     * @param permission an array of allowed HTTP methods
+     * @param allowGuestAccess if true - all unauthenticated requests will go through, 'false' by default.
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void grantResourcePermission(String subjectid, String resourcePath, String[] permission,
+                                        boolean allowGuestAccess,
+                                        Listener<Map<String, Map<String, List<String>>>> callback,
+                                        ErrorListener... error) {
+        if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourcePath) || permission == null) {
             fail(callback, Collections.emptyMap());
             return;
         }
-        invokePut(ClientUtils.formatMessage("_permissions/{0}/{1}", subjectid, resourceName),
+        if (allowGuestAccess && ClientUtils.ALLOW_ALL.equals(subjectid)) {
+            permission = Arrays.copyOf(permission, permission.length + 1);
+            permission[permission.length - 1] = ClientUtils.GUEST;
+        }
+        resourcePath = ClientUtils.urlEncode(resourcePath);
+        invokePut(ClientUtils.formatMessage("_permissions/{0}/{1}", subjectid, resourcePath),
                 permission, Map.class, callback, error);
     }
 
@@ -2145,15 +2167,34 @@ public final class ParaClient {
      * Grants a permission to a subject that allows them to call the
      * specified HTTP methods on a given resource.
      * @param subjectid subject id (user id)
-     * @param resourcePath resource path or object type (URL encoded)
+     * @param resourcePath resource path or object type
      * @param permission a set of HTTP methods
      * @return a map of the permissions for this subject id
      */
     public Map<String, Map<String, List<String>>> grantResourcePermissionSync(String subjectid,
                       String resourcePath, String[] permission) {
+        return grantResourcePermissionSync(subjectid, resourcePath, permission, false);
+    }
+
+    /**
+     * Grants a permission to a subject that allows them to call the
+     * specified HTTP methods on a given resource.
+     * @param subjectid subject id (user id)
+     * @param resourcePath resource path or object type
+     * @param permission a set of HTTP methods
+     * @param allowGuestAccess if true - all unauthenticated requests will go through, 'false' by default.
+     * @return a map of the permissions for this subject id
+     */
+    public Map<String, Map<String, List<String>>> grantResourcePermissionSync(String subjectid,
+                      String resourcePath, String[] permission, boolean allowGuestAccess) {
         if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourcePath) || permission == null) {
             return Collections.emptyMap();
         }
+        if (allowGuestAccess && ClientUtils.ALLOW_ALL.equals(subjectid)) {
+            permission = Arrays.copyOf(permission, permission.length + 1);
+            permission[permission.length - 1] = ClientUtils.GUEST;
+        }
+        resourcePath = ClientUtils.urlEncode(resourcePath);
         return invokeSyncPut(ClientUtils.formatMessage("_permissions/{0}/{1}", subjectid, resourcePath),
                 permission, Map.class);
     }
@@ -2162,18 +2203,19 @@ public final class ParaClient {
      * Revokes a permission for a subject, meaning they
      * no longer will be able to access the given resource.
      * @param subjectid subject id (user id)
-     * @param resourceName resource name or object type
+     * @param resourcePath resource path or object type
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
-    public void revokeResourcePermission(String subjectid, String resourceName,
+    public void revokeResourcePermission(String subjectid, String resourcePath,
                                      Listener<Map<String, Map<String, List<String>>>> callback,
                                          ErrorListener... error) {
-        if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourceName)) {
+        if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourcePath)) {
             fail(callback, Collections.emptyMap());
             return;
         }
-        invokeDelete(ClientUtils.formatMessage("_permissions/{0}/{1}", subjectid, resourceName),
+        resourcePath = ClientUtils.urlEncode(resourcePath);
+        invokeDelete(ClientUtils.formatMessage("_permissions/{0}/{1}", subjectid, resourcePath),
             null, Map.class, callback, error);
     }
 
@@ -2181,7 +2223,7 @@ public final class ParaClient {
      * Revokes a permission for a subject, meaning they no longer
      * will be able to access the given resource.
      * @param subjectid subject id (user id)
-     * @param resourcePath resource path or object type (URL encoded)
+     * @param resourcePath resource path or object type
      * @return a map of the permissions for this subject id
      */
     public Map<String, Map<String, List<String>>> revokeResourcePermissionSync(String subjectid,
@@ -2189,6 +2231,7 @@ public final class ParaClient {
         if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourcePath)) {
             return Collections.emptyMap();
         }
+        resourcePath = ClientUtils.urlEncode(resourcePath);
         return invokeSyncDelete(ClientUtils.formatMessage("_permissions/{0}/{1}", subjectid, resourcePath),
                 null, Map.class);
     }
@@ -2226,20 +2269,21 @@ public final class ParaClient {
     /**
      * Checks if a subject is allowed to call method X on resource Y.
      * @param subjectid subject id
-     * @param resourceName resource name (type)
+     * @param resourcePath resource path or object type
      * @param httpMethod HTTP method name
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
-    public void isAllowedTo(String subjectid, String resourceName, String httpMethod,
+    public void isAllowedTo(String subjectid, String resourcePath, String httpMethod,
                                final Listener<Boolean> callback, ErrorListener... error) {
-        if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourceName) ||
+        if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourcePath) ||
                 StringUtils.isBlank(httpMethod)) {
             fail(callback, false);
             return;
         }
+        resourcePath = ClientUtils.urlEncode(resourcePath);
         String url = ClientUtils.formatMessage("_permissions/{0}/{1}/{2}",
-                subjectid, resourceName, httpMethod);
+                subjectid, resourcePath, httpMethod);
         invokeGet(url, null, String.class, new Listener<String>() {
             public void onResponse(String res) {
                 callback.onResponse(res == null ? false : Boolean.parseBoolean(res));
