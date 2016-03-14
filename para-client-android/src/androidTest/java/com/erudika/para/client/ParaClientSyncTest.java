@@ -79,7 +79,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
 
     private ParaClient pc() {
         if (pc == null) {
-            pc = new ParaClient("app:para", "Kl/9ob2S/JmaoKkVMfElUtfERhCLn4H8gi1EvKGrejtZYCecpe2Z0g==", ctx);
+            pc = new ParaClient("app:para", "gZ81zKW0RwEFYXfiwg/Gk6DVIK1Cwr8DhNH+Njixl8tTMWmoPp5/mA==", ctx);
             pc.setEndpoint("http://192.168.0.113:8080");
         }
         return pc;
