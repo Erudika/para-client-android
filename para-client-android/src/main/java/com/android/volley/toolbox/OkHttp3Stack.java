@@ -47,8 +47,7 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 /**
- * OkHttp backed {@link com.android.volley.toolbox.HttpStack HttpStack} that does not
- * use okhttp-urlconnection
+ * OkHttp backed {@link com.android.volley.toolbox.HttpStack HttpStack}
  */
 public class OkHttp3Stack implements HttpStack {
 
