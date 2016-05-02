@@ -25,6 +25,7 @@ import com.android.volley.VolleyError;
 import com.android.volley.toolbox.BasicNetwork;
 import com.android.volley.toolbox.HurlStack;
 import com.android.volley.toolbox.NoCache;
+import com.android.volley.toolbox.OkHttp3Stack;
 import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.Volley;
 import com.erudika.para.client.utils.Pager;
@@ -93,13 +94,14 @@ public final class ParaClient {
             // getApplicationContext() is key, it keeps you from leaking the
             // Activity or BroadcastReceiver if someone passes one in.
             if (ctx == null) {
-                requestQueue = new RequestQueue(new NoCache(), new BasicNetwork(new HurlStack()));
+                requestQueue = new RequestQueue(new NoCache(), new BasicNetwork(new OkHttp3Stack()));
             } else {
                 if (StringUtils.isBlank(trustedHostname)) {
-                    requestQueue = Volley.newRequestQueue(ctx.getApplicationContext());
+                    requestQueue = Volley.newRequestQueue(ctx.getApplicationContext(),
+                            new OkHttp3Stack());
                 } else {
                     requestQueue = Volley.newRequestQueue(ctx.getApplicationContext(),
-                        new HurlStack(null, ClientUtils.newCustomSocketFactory(trustedHostname)));
+                        new OkHttp3Stack(ClientUtils.newCustomSocketFactory(trustedHostname)));
                 }
             }
         }

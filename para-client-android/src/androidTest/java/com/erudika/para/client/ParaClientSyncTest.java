@@ -79,8 +79,8 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
 
     private ParaClient pc() {
         if (pc == null) {
-            pc = new ParaClient("app:para", "gZ81zKW0RwEFYXfiwg/Gk6DVIK1Cwr8DhNH+Njixl8tTMWmoPp5/mA==", ctx);
-            pc.setEndpoint("http://192.168.0.113:8080");
+            pc = new ParaClient("app:para", "xuzZprTZ+JXveW8UIa2f8Szkzr1xpB1deYZbXpyBZj1hLVVNWloX2g==", ctx);
+            pc.setEndpoint("http://192.168.0.114:8080");
         }
         return pc;
     }
@@ -88,7 +88,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
     private ParaClient pc2() {
         if (pc2 == null) {
             pc2 = new ParaClient("app:para", null, ctx);
-            pc2.setEndpoint("http://192.168.0.113:8080");
+            pc2.setEndpoint("http://192.168.0.114:8080");
         }
         return pc2;
     }
@@ -315,6 +315,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         Thread.sleep(1000);
 
         List<Sysprop> l4 = pc().listSync(dogsType);
+        System.out.println(">>> " + l4.size());
         assertTrue(l4.isEmpty());
 
         Map<String, String> datatypes = (Map<String, String>)

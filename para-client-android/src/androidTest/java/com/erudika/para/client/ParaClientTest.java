@@ -78,8 +78,8 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
 
     private ParaClient pc() {
         if (pc == null) {
-            pc = new ParaClient("app:para", "Kl/9ob2S/JmaoKkVMfElUtfERhCLn4H8gi1EvKGrejtZYCecpe2Z0g==", ctx);
-            pc.setEndpoint("http://192.168.0.113:8080");
+            pc = new ParaClient("app:para", "+txE6EaXYLFSm4zXMkHOJRcFS6mXGcvJWHvV2Xm/rr6ei22M7vcUJw==", ctx);
+            pc.setEndpoint("http://192.168.0.114:8080");
         }
         return pc;
     }
@@ -87,7 +87,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
     private ParaClient pc2() {
         if (pc2 == null) {
             pc2 = new ParaClient("app:para", null, ctx);
-            pc2.setEndpoint("http://192.168.0.113:8080");
+            pc2.setEndpoint("http://192.168.0.114:8080");
         }
         return pc2;
     }
