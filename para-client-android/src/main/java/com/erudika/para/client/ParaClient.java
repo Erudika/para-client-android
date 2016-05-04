@@ -81,8 +81,10 @@ public final class ParaClient {
         this.secretKey = secretKey;
         this.requestQueue = getRequestQueue();
         this.tokenKey = ClientUtils.loadPref("tokenKey", ctx);
-        this.tokenKeyExpires = Long.getLong(ClientUtils.loadPref("tokenKeyExpires", ctx));
-        this.tokenKeyNextRefresh = Long.getLong(ClientUtils.loadPref("tokenKeyNextRefresh", ctx));
+        String tke = ClientUtils.loadPref("tokenKeyExpires", ctx);
+        String tknr = ClientUtils.loadPref("tokenKeyNextRefresh", ctx);
+        this.tokenKeyExpires = (tke != null) ? Long.parseLong(tke) : null;
+        this.tokenKeyNextRefresh = (tknr != null) ? Long.parseLong(tknr) : null;
         this.requestTimeout = NumberUtils.toInt(System.getProperty("para.client.timeout", "30"));
         if (StringUtils.isBlank(secretKey)) {
             logger.warn("Secret key not provided. Make sure you call 'signIn()' first.");
@@ -198,6 +200,21 @@ public final class ParaClient {
         ClientUtils.clearPref("tokenKey", ctx);
         ClientUtils.clearPref("tokenKeyExpires", ctx);
         ClientUtils.clearPref("tokenKeyNextRefresh", ctx);
+    }
+
+    private void saveAccessToken(Map<?, ?> jwtData) {
+        if (jwtData != null) {
+            tokenKey = (String) jwtData.get("access_token");
+            ClientUtils.savePref("tokenKey", tokenKey, ctx);
+
+            tokenKeyExpires = (Long) jwtData.get("expires");
+            ClientUtils.savePref("tokenKeyExpires", tokenKeyExpires != null ?
+                    tokenKeyExpires.toString() : null, ctx);
+
+            tokenKeyNextRefresh = (Long) jwtData.get("refresh");
+            ClientUtils.savePref("tokenKeyNextRefresh", tokenKeyNextRefresh != null ?
+                    tokenKeyNextRefresh.toString() : null, ctx);
+        }
     }
 
     private String key(boolean refresh) {
@@ -2339,12 +2356,7 @@ public final class ParaClient {
                     if (result != null && result.containsKey("user") && result.containsKey("jwt")) {
                         Map<?, ?> jwtData = (Map<?, ?>) result.get("jwt");
                         Map<String, Object> userData = (Map<String, Object>) result.get("user");
-                        tokenKey = (String) jwtData.get("access_token");
-                        tokenKeyExpires = (Long) jwtData.get("expires");
-                        tokenKeyNextRefresh = (Long) jwtData.get("refresh");
-                        ClientUtils.savePref("tokenKey", tokenKey, ctx);
-                        ClientUtils.savePref("tokenKeyExpires", tokenKeyExpires.toString(), ctx);
-                        ClientUtils.savePref("tokenKeyNextRefresh", tokenKeyNextRefresh.toString(), ctx);
+                        saveAccessToken(jwtData);
                         if (callback != null) {
                             callback.onResponse(ClientUtils.setFields(Sysprop.class, userData));
                         }
@@ -2390,9 +2402,7 @@ public final class ParaClient {
             if (result != null && result.containsKey("user") && result.containsKey("jwt")) {
                 Map<?, ?> jwtData = (Map<?, ?>) result.get("jwt");
                 Map<String, Object> userData = (Map<String, Object>) result.get("user");
-                tokenKey = (String) jwtData.get("access_token");
-                tokenKeyExpires = (Long) jwtData.get("expires");
-                tokenKeyNextRefresh = (Long) jwtData.get("refresh");
+                saveAccessToken(jwtData);
                 return ClientUtils.setFields(Sysprop.class, userData);
             } else {
                 clearAccessToken();
@@ -2426,12 +2436,7 @@ public final class ParaClient {
                 public void onResponse(Map result) {
                     if (result != null && result.containsKey("user") && result.containsKey("jwt")) {
                         Map<?, ?> jwtData = (Map<?, ?>) result.get("jwt");
-                        tokenKey = (String) jwtData.get("access_token");
-                        tokenKeyExpires = (Long) jwtData.get("expires");
-                        tokenKeyNextRefresh = (Long) jwtData.get("refresh");
-                        ClientUtils.savePref("tokenKey", tokenKey, ctx);
-                        ClientUtils.savePref("tokenKeyExpires", tokenKeyExpires.toString(), ctx);
-                        ClientUtils.savePref("tokenKeyNextRefresh", tokenKeyNextRefresh.toString(), ctx);
+                        saveAccessToken(jwtData);
                         if (callback != null) {
                             callback.onResponse(true);
                         }
@@ -2470,9 +2475,7 @@ public final class ParaClient {
             Map<String, Object> result = invokeSyncGet(JWT_PATH, null, Map.class);
             if (result != null && result.containsKey("user") && result.containsKey("jwt")) {
                 Map<?, ?> jwtData = (Map<?, ?>) result.get("jwt");
-                tokenKey = (String) jwtData.get("access_token");
-                tokenKeyExpires = (Long) jwtData.get("expires");
-                tokenKeyNextRefresh = (Long) jwtData.get("refresh");
+                saveAccessToken(jwtData);
                 return true;
             } else {
                 clearAccessToken();
