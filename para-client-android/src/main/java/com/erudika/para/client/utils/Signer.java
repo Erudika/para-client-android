@@ -22,6 +22,7 @@ import com.amazonaws.DefaultRequest;
 import com.amazonaws.auth.AWS4Signer;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.http.HttpMethodName;
+import com.amazonaws.util.SdkHttpUtils;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import java.io.ByteArrayInputStream;
@@ -113,7 +114,7 @@ public final class Signer extends AWS4Signer {
             r.setEndpoint(URI.create(endpoint));
         }
         if (!StringUtils.isBlank(resourcePath)) {
-            r.setResourcePath(resourcePath);
+            r.setResourcePath(SdkHttpUtils.urlEncode(resourcePath, true));
         }
         if (headers != null) {
             if (headers.containsKey("x-amz-date")) {

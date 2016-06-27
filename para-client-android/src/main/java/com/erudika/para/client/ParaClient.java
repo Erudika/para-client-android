@@ -914,6 +914,49 @@ public final class ParaClient {
     }
 
     /**
+     * Searches within a nested field. The objects of the given type must contain a nested field "nstd".
+     * @param type the type of object to search for. See {@link Sysprop#getType()}
+     * @param field field the name of the field to target (within a nested field "nstd")
+     * @param query the query string
+     * @param pager a {@link Pager}
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void findNestedQuery(String type, String field, String query, final Pager pager,
+                          final Listener<List<ParaObject>> callback,
+                          ErrorListener... error) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("q", query);
+        params.put("field", field);
+        params.put("type", type);
+        params.putAll(pagerToParams(pager));
+        find("nested", params, new Listener<Map<String, Object>>() {
+            public void onResponse(Map<String, Object> res) {
+                callback.onResponse(getItems(res, pager));
+            }
+        }, error);
+    }
+
+    /**
+     * Searches within a nested field. The objects of the given type must contain a nested field "nstd".
+     * @param <P> type of the object
+     * @param type the type of object to search for. See {@link ParaObject#getType()}
+     * @param field field the name of the field to target (within a nested field "nstd")
+     * @param query the query string
+     * @param pager a {@link Pager}
+     * @return a list of objects found
+     */
+    public <P extends ParaObject> List<P> findNestedQuerySync(String type, String field,
+                                                        String query, Pager... pager) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("q", query);
+        params.put("field", field);
+        params.put("type", type);
+        params.putAll(pagerToParams(pager));
+        return getItems(findSync("nested", params), pager);
+    }
+
+    /**
      * Searches for objects that have similar property values to a given text.
      * A "find like this" query.
      * @param type the type of object to search for. See {@link Sysprop#getType()}
@@ -1370,7 +1413,7 @@ public final class ParaClient {
             return;
         }
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
-        invokeGet(url, null, Map.class, new Listener<Map<String, Object>>() {
+        invokeGet(url, pagerToParams(pager), Map.class, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
                 callback.onResponse(getItems(res, pager));
             }
@@ -1391,7 +1434,60 @@ public final class ParaClient {
             return Collections.emptyList();
         }
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
-        return getItems(invokeSyncGet(url, null, Map.class), pager);
+        return getItems(invokeSyncGet(url, pagerToParams(pager), Map.class), pager);
+    }
+
+    /**
+     * Searches through all linked objects in many-to-many relationships.
+     * @param obj the object to execute this method on
+     * @param type2 type of linked objects to search for
+     * @param field field the name of the field to target (within a nested field "nstd")
+     * @param query the query string
+     * @param pager a {@link Pager}
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void findLinkedObjects(ParaObject obj, String type2, String field, String query,
+                                  final Pager pager, final Listener<List<ParaObject>> callback,
+                                  ErrorListener... error) {
+        if (obj == null || obj.getId() == null || type2 == null) {
+            fail(callback, Collections.emptyList());
+            return;
+        }
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("field", field);
+        params.put("q", (query == null) ? "*" : query);
+        params.putAll(pagerToParams(pager));
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        invokeGet(url, params, Map.class, new Listener<Map<String, Object>>() {
+            public void onResponse(Map<String, Object> res) {
+                callback.onResponse(getItems(res, pager));
+            }
+        }, error);
+    }
+
+    /**
+     * Searches through all linked objects in many-to-many relationships.
+     * @param <P> type of linked objects
+     * @param obj the object to execute this method on
+     * @param type2 type of linked objects to search for
+     * @param field field the name of the field to target (within a nested field "nstd")
+     * @param query the query string
+     * @param pager a {@link Pager}
+     * @return a list of linked objects
+     */
+    public <P extends ParaObject> List<P> findLinkedObjectsSync(ParaObject obj, String type2,
+                                                                String field, String query,
+                                                                Pager... pager) {
+        if (obj == null || obj.getId() == null || type2 == null) {
+            return Collections.emptyList();
+        }
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("field", field);
+        params.put("q", (query == null) ? "*" : query);
+        params.putAll(pagerToParams(pager));
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        return getItems(invokeSyncGet(url, params, Map.class), pager);
     }
 
     /**
@@ -1621,6 +1717,7 @@ public final class ParaClient {
         }
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("childrenonly", "true");
+        params.putAll(pagerToParams(pager));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
         invokeGet(url, params, Map.class, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -1643,6 +1740,7 @@ public final class ParaClient {
         }
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("childrenonly", "true");
+        params.putAll(pagerToParams(pager));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
         return getItems(invokeSyncGet(url, params, Map.class), pager);
     }
@@ -1668,6 +1766,7 @@ public final class ParaClient {
         params.put("childrenonly", "true");
         params.put("field", field);
         params.put("term", term);
+        params.putAll(pagerToParams(pager));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
         invokeGet(url, params, Map.class, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -1695,6 +1794,59 @@ public final class ParaClient {
         params.put("childrenonly", "true");
         params.put("field", field);
         params.put("term", term);
+        params.putAll(pagerToParams(pager));
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        return getItems(invokeSyncGet(url, params, Map.class), pager);
+    }
+
+    /**
+     * Search through all child objects. Only searches child objects directly
+     * connected to this parent via the {@code parentid} field.
+     * @param type2 the type of children to look for
+     * @param query a query string
+     * @param obj the object to execute this method on
+     * @param pager a {@link Pager}
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void findChildren(ParaObject obj, String type2, String query, final Pager pager,
+                             final Listener<List<ParaObject>> callback,
+                             ErrorListener... error) {
+        if (obj == null || obj.getId() == null || type2 == null) {
+            fail(callback, Collections.emptyList());
+            return;
+        }
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("childrenonly", "true");
+        params.put("q", (query == null) ? "*" : query);
+        params.putAll(pagerToParams(pager));
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        invokeGet(url, params, Map.class, new Listener<Map<String, Object>>() {
+            public void onResponse(Map<String, Object> res) {
+                callback.onResponse(getItems(res, pager));
+            }
+        }, error);
+    }
+
+    /**
+     * Search through all child objects. Only searches child objects directly
+     * connected to this parent via the {@code parentid} field.
+     * @param <P> the type of children
+     * @param type2 the type of children to look for
+     * @param query a query string
+     * @param obj the object to execute this method on
+     * @param pager a {@link Pager}
+     * @return a list of {@link ParaObject} in a one-to-many relationship with this object
+     */
+    public <P extends ParaObject> List<P> findChildrenSync(ParaObject obj, String type2,
+                                                           String query, Pager... pager) {
+        if (obj == null || obj.getId() == null || type2 == null) {
+            return Collections.emptyList();
+        }
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("childrenonly", "true");
+        params.put("q", (query == null) ? "*" : query);
+        params.putAll(pagerToParams(pager));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
         return getItems(invokeSyncGet(url, params, Map.class), pager);
     }
