@@ -17,16 +17,18 @@
  */
 package com.erudika.para.client;
 
-import android.app.Instrumentation;
 import android.content.Context;
-import android.test.ActivityInstrumentationTestCase2;
-import android.test.suitebuilder.annotation.SmallTest;
+import android.support.test.InstrumentationRegistry;
+import android.support.test.filters.SmallTest;
+import android.support.test.runner.AndroidJUnit4;
 import com.android.volley.VolleyError;
-import com.erudika.para.client.test.TestActivity;
 import com.erudika.para.client.utils.Pager;
 import com.erudika.para.core.ParaObject;
 import com.erudika.para.core.Sysprop;
+
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.text.SimpleDateFormat;
@@ -42,19 +44,20 @@ import static com.android.volley.Response.ErrorListener;
 import static com.android.volley.Response.Listener;
 import static com.erudika.para.client.utils.ClientUtils.ALLOW_ALL;
 import static com.erudika.para.core.Constraint.required;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.*;
 
 /**
  * ParaClient integration tests - execute on device!
  * @author Alex Bogdanovski [alex@erudika.com]
  */
+@RunWith(AndroidJUnit4.class)
 @SmallTest
 @SuppressWarnings("unchecked")
-public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestActivity> {
+public class ParaClientSyncTest {
 
     private static final Logger logger = LoggerFactory.getLogger(ParaClientSyncTest.class);
-    private ParaClient pc;
-    private ParaClient pc2;
+    private static ParaClient pc;
+    private static ParaClient pc2;
     private static final String catsType = "cat";
     private static final String dogsType = "dog";
     private static final String APP_ID = "app:para";
@@ -69,23 +72,21 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
     protected static Sysprop a2;
 
     private static Context ctx;
-    private Instrumentation inst;
 
     private static boolean ranOnce = false;
 
     public ParaClientSyncTest() {
-        super(TestActivity.class);
     }
 
-    private ParaClient pc() {
+    private static ParaClient pc() {
         if (pc == null) {
-            pc = new ParaClient("app:para", "HO29xPlZUpHYg6/qbgqDjZ5MyTNGte5lAy+UlB+2qDkseutNNOqsHQ==", ctx);
+            pc = new ParaClient("app:para", "VIJccBA/b2kwqgdLW8UdaEEbNDlU4A8nYt+zrXjGhOpB2jgGPCg/+A==", ctx);
             pc.setEndpoint("http://192.168.0.113:8080");
         }
         return pc;
     }
 
-    private ParaClient pc2() {
+    private static ParaClient pc2() {
         if (pc2 == null) {
             pc2 = new ParaClient("app:para", null, ctx);
             pc2.setEndpoint("http://192.168.0.113:8080");
@@ -93,7 +94,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         return pc2;
     }
 
-    private Sysprop u() {
+    private static Sysprop u() {
         if (u == null) {
             u = new Sysprop("111");
             u.setName("John Doe");
@@ -103,7 +104,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         return u;
     }
 
-    private Sysprop u1() {
+    private static Sysprop u1() {
         if (u1 == null) {
             u1 = new Sysprop("222");
             u1.setName("Joe Black");
@@ -113,7 +114,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         return u1;
     }
 
-    private Sysprop u2() {
+    private static Sysprop u2() {
         if (u2 == null) {
             u2 = new Sysprop("333");
             u2.setName("Ann Smith");
@@ -123,7 +124,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         return u2;
     }
 
-    private Sysprop t() {
+    private static Sysprop t() {
         if (t == null) {
             t = new Sysprop("tag:test");
             t.setType("tag");
@@ -134,7 +135,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         return t;
     }
 
-    private Sysprop a1() {
+    private static Sysprop a1() {
         if (a1 == null) {
             a1 = new Sysprop("adr1");
             a1.setType("address");
@@ -148,7 +149,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         return a1;
     }
 
-    private Sysprop a2() {
+    private static Sysprop a2() {
         if (a2 == null) {
             a2 = new Sysprop("adr2");
             a2.setType("address");
@@ -162,7 +163,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         return a2;
     }
 
-    private Sysprop s1() {
+    private static Sysprop s1() {
         if (s1 == null) {
             s1 = new Sysprop("s1");
             s1.setName("This is a little test sentence. Testing, one, two, three.");
@@ -171,7 +172,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         return s1;
     }
 
-    private Sysprop s2() {
+    private static Sysprop s2() {
         if (s2 == null) {
             s2 = new Sysprop("s2");
             s2.setName("We are testing this thing. This sentence is a test. One, two.");
@@ -180,11 +181,9 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         return s2;
     }
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-        inst = this.getInstrumentation();
-        ctx = inst.getTargetContext();
+    @BeforeClass
+    public static void setUp() throws Exception {
+        ctx = InstrumentationRegistry.getContext();
 
         if (!ranOnce) {
             ranOnce = true;
@@ -315,7 +314,6 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         Thread.sleep(1000);
 
         List<Sysprop> l4 = pc().listSync(dogsType);
-        System.out.println(">>> " + l4.size());
         assertTrue(l4.isEmpty());
 
         Map<String, String> datatypes = (Map<String, String>)
@@ -448,7 +446,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         assertFalse(pc().findWildcardSync(u().getType(), "name", "an*").isEmpty());
 
         assertTrue(pc().getCountSync(null).intValue() > 4);
-        assertNotEquals(0, pc().getCountSync("").intValue());
+        assertFalse(pc().getCountSync("").intValue() == 0);
         assertEquals(0, pc().getCountSync("test").intValue());
         assertTrue(pc().getCountSync(u().getType()).intValue() >= 3);
 
@@ -488,11 +486,11 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
         String id2 = pc().newIdSync();
         assertNotNull(id1);
         assertFalse(id1.isEmpty());
-        assertNotEquals(id1, id2);
+        assertFalse(id1.equals(id2));
 
         final Long ts = pc().getTimestampSync();
         assertNotNull(ts);
-        assertNotEquals(0, ts.intValue());
+        assertFalse(ts.intValue() == 0);
 
         String date1 = pc().formatDateSync("MM dd yyyy", Locale.US);
         String date2 = new SimpleDateFormat("MM dd yyyy").format(new Date());

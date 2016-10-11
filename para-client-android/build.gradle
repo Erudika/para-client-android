@@ -21,6 +21,7 @@ android {
         targetSdkVersion 24
         versionCode 1
         versionName paraVer
+        testInstrumentationRunner 'android.support.test.runner.AndroidJUnitRunner'
     }
     buildTypes {
         release {
@@ -71,11 +72,9 @@ dependencies {
     compile 'org.slf4j:log4j-over-slf4j:1.7.21'
     compile 'org.apache.commons:commons-lang3:3.4'
     compile 'com.noveogroup.android:android-logger:1.3.6'
-//    compile 'com.amazonaws:aws-java-sdk-core:1.11.10'
     compile 'com.squareup.okio:okio:1.10.0'
     compile 'com.squareup.okhttp3:okhttp:3.4.1'
     compile 'com.squareup.okhttp3:okhttp-urlconnection:3.4.1'
-    // DO NOT USE Android SDK - breaks tests because of PATCH methods
     compile 'com.amazonaws:aws-android-sdk-core:2.3.2'
 }
 

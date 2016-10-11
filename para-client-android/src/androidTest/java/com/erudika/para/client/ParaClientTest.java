@@ -17,13 +17,13 @@
  */
 package com.erudika.para.client;
 
-import android.app.Instrumentation;
 import android.content.Context;
-import android.test.ActivityInstrumentationTestCase2;
-import android.test.suitebuilder.annotation.SmallTest;
+import android.support.test.InstrumentationRegistry;
+import android.support.test.filters.SmallTest;
+import android.support.test.rule.ServiceTestRule;
+import android.support.test.runner.AndroidJUnit4;
 import static com.android.volley.Response.*;
 import com.android.volley.VolleyError;
-import com.erudika.para.client.test.TestActivity;
 import com.erudika.para.client.utils.Pager;
 import com.erudika.para.core.ParaObject;
 import com.erudika.para.core.Sysprop;
@@ -39,7 +39,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import static org.junit.Assert.*;
+
+import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,13 +51,17 @@ import org.slf4j.LoggerFactory;
  * ParaClient integration tests - execute on device!
  * @author Alex Bogdanovski [alex@erudika.com]
  */
+@RunWith(AndroidJUnit4.class)
 @SmallTest
 @SuppressWarnings("unchecked")
-public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivity> {
+public class ParaClientTest {
+
+    @Rule
+    public final ServiceTestRule mServiceRule = new ServiceTestRule();
 
     private static final Logger logger = LoggerFactory.getLogger(ParaClientTest.class);
-    private ParaClient pc;
-    private ParaClient pc2;
+    private static ParaClient pc;
+    private static ParaClient pc2;
     private static final String catsType = "cat";
     private static final String dogsType = "dog";
     private static final String APP_ID = "app:para";
@@ -68,31 +76,29 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
     protected static Sysprop a2;
 
     private static Context ctx;
-    private Instrumentation inst;
 
     private static boolean ranOnce = false;
 
     public ParaClientTest() {
-        super(TestActivity.class);
     }
 
-    private ParaClient pc() {
+    private static ParaClient pc() {
         if (pc == null) {
-            pc = new ParaClient("app:para", "4U6nCAD+JscgLEgi7Apubfnt+TLkFUsX+HfDm7J10SBcHA8YRGY+zA==", ctx);
-            pc.setEndpoint("http://192.168.0.114:8080");
+            pc = new ParaClient("app:para", "VIJccBA/b2kwqgdLW8UdaEEbNDlU4A8nYt+zrXjGhOpB2jgGPCg/+A==", ctx);
+            pc.setEndpoint("http://192.168.0.113:8080");
         }
         return pc;
     }
 
-    private ParaClient pc2() {
+    private static ParaClient pc2() {
         if (pc2 == null) {
             pc2 = new ParaClient("app:para", null, ctx);
-            pc2.setEndpoint("http://192.168.0.114:8080");
+            pc2.setEndpoint("http://192.168.0.113:8080");
         }
         return pc2;
     }
 
-    private Sysprop u() {
+    private static Sysprop u() {
         if (u == null) {
             u = new Sysprop("111");
             u.setName("John Doe");
@@ -102,7 +108,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         return u;
     }
 
-    private Sysprop u1() {
+    private static Sysprop u1() {
         if (u1 == null) {
             u1 = new Sysprop("222");
             u1.setName("Joe Black");
@@ -112,7 +118,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         return u1;
     }
 
-    private Sysprop u2() {
+    private static Sysprop u2() {
         if (u2 == null) {
             u2 = new Sysprop("333");
             u2.setName("Ann Smith");
@@ -122,7 +128,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         return u2;
     }
 
-    private Sysprop t() {
+    private static Sysprop t() {
         if (t == null) {
             t = new Sysprop("tag:test");
             t.setType("tag");
@@ -133,7 +139,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         return t;
     }
 
-    private Sysprop a1() {
+    private static Sysprop a1() {
         if (a1 == null) {
             a1 = new Sysprop("adr1");
             a1.setType("address");
@@ -147,7 +153,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         return a1;
     }
 
-    private Sysprop a2() {
+    private static Sysprop a2() {
         if (a2 == null) {
             a2 = new Sysprop("adr2");
             a2.setType("address");
@@ -161,7 +167,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         return a2;
     }
 
-    private Sysprop s1() {
+    private static Sysprop s1() {
         if (s1 == null) {
             s1 = new Sysprop("s1");
             s1.setName("This is a little test sentence. Testing, one, two, three.");
@@ -170,7 +176,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         return s1;
     }
 
-    private Sysprop s2() {
+    private static Sysprop s2() {
         if (s2 == null) {
             s2 = new Sysprop("s2");
             s2.setName("We are testing this thing. This sentence is a test. One, two.");
@@ -179,11 +185,9 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         return s2;
     }
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-        inst = this.getInstrumentation();
-        ctx = inst.getTargetContext();
+    @BeforeClass
+    public static void setUp() throws Exception {
+        ctx = InstrumentationRegistry.getContext();
 
         if (!ranOnce) {
             ranOnce = true;
@@ -761,7 +765,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         });
         pc().getCount("", new Listener<Long>() {
             public void onResponse(Long res) {
-                assertNotEquals(0, res.intValue());
+                assertFalse(res.intValue() == 0);
             }
         });
         pc().getCount("test", new Listener<Long>() {
@@ -809,60 +813,60 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
                         pc().isLinked(u(), null, new Listener<Boolean>() {
                             public void onResponse(Boolean res) {
                                 assertFalse(res);
-                            }
-                        });
-                        pc().isLinked(u(), t(), new Listener<Boolean>() {
-                            public void onResponse(Boolean res) {
-                                assertTrue(res);
-                            }
-                        });
-                        pc().isLinked(u(), u2(), new Listener<Boolean>() {
-                            public void onResponse(Boolean res) {
-                                assertTrue(res);
+                                pc().isLinked(u(), t(), new Listener<Boolean>() {
+                                    public void onResponse(Boolean res) {
+                                        assertTrue(res);
+                                        pc().isLinked(u(), u2(), new Listener<Boolean>() {
+                                            public void onResponse(Boolean res) {
+                                                assertTrue(res);
+                                            }
+                                        });
+                                    }
+                                });
                             }
                         });
 
                         pc().getLinkedObjects(u(), "tag", null, new Listener<List<ParaObject>>() {
                             public void onResponse(List<ParaObject> res) {
                                 assertEquals(1, res.size());
-                            }
-                        });
-                        pc().getLinkedObjects(u(), "sysprop", null, new Listener<List<ParaObject>>() {
-                            public void onResponse(List<ParaObject> res) {
-                                assertEquals(1, res.size());
+                                pc().getLinkedObjects(u(), "sysprop", null, new Listener<List<ParaObject>>() {
+                                    public void onResponse(List<ParaObject> res) {
+                                        assertEquals(1, res.size());
+                                    }
+                                });
                             }
                         });
 
                         pc().countLinks(u(), null, new Listener<Long>() {
                             public void onResponse(Long res) {
                                 assertEquals(0, res.intValue());
-                            }
-                        });
-                        pc().countLinks(u(), "tag", new Listener<Long>() {
-                            public void onResponse(Long res) {
-                                assertEquals(1, res.intValue());
-                            }
-                        });
-                        pc().countLinks(u(), "sysprop", new Listener<Long>() {
-                            public void onResponse(Long res) {
-                                assertEquals(1, res.intValue());
+                                pc().countLinks(u(), "tag", new Listener<Long>() {
+                                    public void onResponse(Long res) {
+                                        assertEquals(1, res.intValue());
+                                        pc().countLinks(u(), "sysprop", new Listener<Long>() {
+                                            public void onResponse(Long res) {
+                                                assertEquals(1, res.intValue());
+                                                pc().unlinkAll(u(), new Listener<Map>() {
+                                                    public void onResponse(Map map) {
+                                                        pc().isLinked(u(), t(), new Listener<Boolean>() {
+                                                            public void onResponse(Boolean res) {
+                                                                assertFalse(res);
+                                                            }
+                                                        });
+                                                        pc().isLinked(u(), u2(), new Listener<Boolean>() {
+                                                            public void onResponse(Boolean res) {
+                                                                assertFalse(res);
+                                                            }
+                                                        });
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
                             }
                         });
 
-                        pc().unlinkAll(u(), new Listener<Map>() {
-                            public void onResponse(Map map) {
-                                pc().isLinked(u(), t(), new Listener<Boolean>() {
-                                    public void onResponse(Boolean res) {
-                                        assertFalse(res);
-                                    }
-                                });
-                                pc().isLinked(u(), u2(), new Listener<Boolean>() {
-                                    public void onResponse(Boolean res) {
-                                        assertFalse(res);
-                                    }
-                                });
-                            }
-                        });
                     }
                 });
             }
@@ -881,7 +885,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
                     public void onResponse(String id2) {
                         assertNotNull(id1);
                         assertFalse(id1.isEmpty());
-                        assertNotEquals(id1, id2);
+                        assertFalse(id1.equals(id2));
                     }
                 });
             }
@@ -890,7 +894,7 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
         pc().getTimestamp(new Listener<Long>() {
             public void onResponse(Long ts) {
                 assertNotNull(ts);
-                assertNotEquals(0, ts.intValue());
+                assertFalse(ts.intValue() == 0);
             }
         });
 
@@ -976,6 +980,8 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
                 pc().validationConstraints(kittenType,
                         new Listener<Map<String, Map<String, Map<String, Map<String, ?>>>>>() {
                     public void onResponse(Map<String, Map<String, Map<String, Map<String, ?>>>> constraint) {
+                        System.out.println(">>>>>>>> " + constraint);
+                        assertTrue(constraint.containsKey(kittenType));
                         assertTrue(constraint.get(kittenType).containsKey("paws"));
 
                         final Sysprop ct = new Sysprop("felix");
@@ -1059,50 +1065,50 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
                 pc().isAllowedTo(ALLOW_ALL, "utils/timestamp", "GET", new Listener<Boolean>() {
                     public void onResponse(Boolean res) {
                         assertFalse(res);
-                    }
-                });
-                pc().grantResourcePermission(ALLOW_ALL, "utils/timestamp", new String[]{"GET"}, true,
-                    new Listener<Map<String, Map<String, List<String>>>>() {
-                        public void onResponse(Map<String, Map<String, List<String>>> res) {
-                            assertNotNull(res);
-                            pc2().getTimestamp(new Listener<Long>() {
-                                public void onResponse(Long res) {
-                                    assertTrue(res > 0);
+                        pc().grantResourcePermission(ALLOW_ALL, "utils/timestamp", new String[]{"GET"}, true,
+                            new Listener<Map<String, Map<String, List<String>>>>() {
+                                public void onResponse(Map<String, Map<String, List<String>>> res) {
+                                    assertNotNull(res);
+                                    pc2().getTimestamp(new Listener<Long>() {
+                                        public void onResponse(Long res) {
+                                            assertTrue(res > 0);
+                                        }
+                                    });
+
+                                    pc().isAllowedTo("*", "utils/timestamp", "DELETE", new Listener<Boolean>() {
+                                        public void onResponse(Boolean res) {
+                                            assertFalse(res);
+                                        }
+                                    });
                                 }
                             });
 
-                            pc().isAllowedTo("*", "utils/timestamp", "DELETE", new Listener<Boolean>() {
-                                public void onResponse(Boolean res) {
-                                    assertFalse(res);
-                                }
-                            });
-                        }
-                    });
-
-                pc().resourcePermissions(new Listener<Map<String, Map<String, List<String>>>>() {
-                    public void onResponse(Map<String, Map<String, List<String>>> permits) {
-                        assertTrue(permits.containsKey(u1().getId()));
-                        assertTrue(permits.get(u1().getId()).containsKey(dogsType));
-                    }
-                });
-
-                pc().revokeResourcePermission(u1().getId(), dogsType,
-                        new Listener<Map<String, Map<String, List<String>>>>() {
-                    public void onResponse(Map<String, Map<String, List<String>>> res) {
-                        pc().resourcePermissions(u1().getId(),
-                                new Listener<Map<String, Map<String, List<String>>>>() {
+                        pc().resourcePermissions(new Listener<Map<String, Map<String, List<String>>>>() {
                             public void onResponse(Map<String, Map<String, List<String>>> permits) {
-                                assertFalse(permits.get(u1().getId()).containsKey(dogsType));
-                                pc().isAllowedTo(u1().getId(), dogsType, "GET",
-                                        new Listener<Boolean>() {
-                                    public void onResponse(Boolean res) {
-                                        assertFalse(res);
-                                    }
-                                });
-                                pc().isAllowedTo(u1().getId(), dogsType, "POST",
-                                        new Listener<Boolean>() {
-                                    public void onResponse(Boolean res) {
-                                        assertFalse(res);
+                                assertTrue(permits.containsKey(u1().getId()));
+                                assertTrue(permits.get(u1().getId()).containsKey(dogsType));
+                            }
+                        });
+
+                        pc().revokeResourcePermission(u1().getId(), dogsType,
+                                new Listener<Map<String, Map<String, List<String>>>>() {
+                            public void onResponse(Map<String, Map<String, List<String>>> res) {
+                                pc().resourcePermissions(u1().getId(),
+                                        new Listener<Map<String, Map<String, List<String>>>>() {
+                                    public void onResponse(Map<String, Map<String, List<String>>> permits) {
+                                        assertFalse(permits.get(u1().getId()).containsKey(dogsType));
+                                        pc().isAllowedTo(u1().getId(), dogsType, "GET",
+                                                new Listener<Boolean>() {
+                                            public void onResponse(Boolean res) {
+                                                assertFalse(res);
+                                            }
+                                        });
+                                        pc().isAllowedTo(u1().getId(), dogsType, "POST",
+                                                new Listener<Boolean>() {
+                                            public void onResponse(Boolean res) {
+                                                assertFalse(res);
+                                            }
+                                        });
                                     }
                                 });
                             }
@@ -1256,6 +1262,103 @@ public class ParaClientTest extends ActivityInstrumentationTestCase2<TestActivit
                                                         });
                                                     }
                                                 });
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    @Test
+    public void testAppSettings() {
+        pc().appSettings(new Listener<Map<String, Object>>() {
+            public void onResponse(Map<String, Object> settings) {
+                assertNotNull(settings);
+//                assertTrue(settings.isEmpty());
+
+                pc().addAppSetting("", null, new Listener<Map<String, Object>>() {
+                    public void onResponse(Map<String, Object> response) {
+                        assertTrue(response.isEmpty());
+                    }
+                });
+                pc().addAppSetting(" ", " ", new Listener<Map<String, Object>>() {
+                    public void onResponse(Map<String, Object> response) {
+                        assertTrue(response.isEmpty());
+                    }
+                });
+                pc().addAppSetting(null, " ", new Listener<Map<String, Object>>() {
+                    public void onResponse(Map<String, Object> response) {
+                        assertTrue(response.isEmpty());
+                    }
+                });
+                pc().addAppSetting("prop1", 1, new Listener<Map<String, Object>>() {
+                    public void onResponse(Map<String, Object> response) {
+                        pc().addAppSetting("prop2", true, new Listener<Map<String, Object>>() {
+                            public void onResponse(Map<String, Object> response) {
+                                pc().addAppSetting("prop3", "string", new Listener<Map<String, Object>>() {
+                                    public void onResponse(Map<String, Object> response) {
+                                        pc().appSettings(new Listener<Map<String, Object>>() {
+                                            public void onResponse(final Map<String, Object> response) {
+                                                assertEquals(3, response.size());
+                                                pc().appSettings(null, new Listener<Map<String, Object>>() {
+                                                    public void onResponse(Map<String, Object> response2) {
+                                                        assertEquals(response, response2);
+                                                    }
+                                                });
+                                            }
+                                        });
+                                        pc().appSettings("prop1", new Listener<Map<String, Object>>() {
+                                            public void onResponse(Map<String, Object> response) {
+                                                assertEquals(Collections.singletonMap("value", 1), response);
+                                            }
+                                        });
+                                        pc().appSettings("prop2", new Listener<Map<String, Object>>() {
+                                            public void onResponse(Map<String, Object> response) {
+                                                assertEquals(Collections.singletonMap("value", true), response);
+                                            }
+                                        });
+                                        pc().appSettings("prop3", new Listener<Map<String, Object>>() {
+                                            public void onResponse(Map<String, Object> response) {
+                                                assertEquals(Collections.singletonMap("value", "string"), response);
+                                                pc().removeAppSetting("prop3", new Listener<Map<String, Object>>() {
+                                                    public void onResponse(Map<String, Object> response) {
+                                                        pc().appSettings("prop3", new Listener<Map<String, Object>>() {
+                                                            public void onResponse(Map<String, Object> response) {
+                                                                assertTrue(response.isEmpty());
+                                                                pc().appSettings(new Listener<Map<String, Object>>() {
+                                                                    public void onResponse(Map<String, Object> response) {
+                                                                        assertEquals(2, response.size());
+                                                                        pc().removeAppSetting("prop2", new Listener<Map<String, Object>>() {
+                                                                            public void onResponse(Map<String, Object> response) {
+                                                                                assertTrue(response.isEmpty());
+                                                                            }
+                                                                        });
+                                                                        pc().removeAppSetting("prop1", new Listener<Map<String, Object>>() {
+                                                                            public void onResponse(Map<String, Object> response) {
+                                                                                assertTrue(response.isEmpty());
+                                                                            }
+                                                                        });
+                                                                    }
+                                                                });
+                                                            }
+                                                        });
+                                                    }
+                                                });
+                                            }
+                                        });
+                                        pc().removeAppSetting(" ", new Listener<Map<String, Object>>() {
+                                            public void onResponse(Map<String, Object> response) {
+                                                assertTrue(response.isEmpty());
+                                            }
+                                        });
+                                        pc().removeAppSetting(" ", new Listener<Map<String, Object>>() {
+                                            public void onResponse(Map<String, Object> response) {
+                                                assertTrue(response.isEmpty());
                                             }
                                         });
                                     }

@@ -22,7 +22,7 @@ import com.amazonaws.DefaultRequest;
 import com.amazonaws.auth.AWS4Signer;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.http.HttpMethodName;
-import com.amazonaws.util.SdkHttpUtils;
+import com.amazonaws.util.HttpUtils;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import java.io.ByteArrayInputStream;
@@ -30,11 +30,14 @@ import java.io.InputStream;
 import java.net.URI;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -114,7 +117,7 @@ public final class Signer extends AWS4Signer {
             r.setEndpoint(URI.create(endpoint));
         }
         if (!StringUtils.isBlank(resourcePath)) {
-            r.setResourcePath(SdkHttpUtils.urlEncode(resourcePath, true));
+            r.setResourcePath(resourcePath);
         }
         if (headers != null) {
             if (headers.containsKey("x-amz-date")) {
@@ -203,7 +206,7 @@ public final class Signer extends AWS4Signer {
                     }
                 }
             }
-            queryString = super.getCanonicalizedQueryString(paramMap);
+            queryString = getQueryString(paramMap);
             if (!queryString.isEmpty()) {
                 url += "?" + queryString;
             }
@@ -310,6 +313,29 @@ public final class Signer extends AWS4Signer {
             logger.error("Object could not be converted to JSON byte[]", e);
             return new byte[0];
         }
+    }
+
+    private String getQueryString(Map<String, List<String>> parameters) {
+        Map<String, List<String>> sortedParams = new TreeMap<String, List<String>>();
+        for (Map.Entry<String, List<String>> entry : parameters.entrySet()) {
+            List<String> paramValues = entry.getValue();
+            List<String> encodedValues = new ArrayList<String>(paramValues.size());
+            for (String value : paramValues) {
+                encodedValues.add(HttpUtils.urlEncode(value, false));
+            }
+            Collections.sort(encodedValues);
+            sortedParams.put(HttpUtils.urlEncode(entry.getKey(), false), encodedValues);
+        }
+        final StringBuilder result = new StringBuilder();
+        for(Map.Entry<String, List<String>> entry : sortedParams.entrySet()) {
+            for(String value : entry.getValue()) {
+                if (result.length() > 0) {
+                    result.append("&");
+                }
+                result.append(entry.getKey()).append("=").append(value);
+            }
+        }
+        return result.toString();
     }
 
 }
