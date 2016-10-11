@@ -79,8 +79,8 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
 
     private ParaClient pc() {
         if (pc == null) {
-            pc = new ParaClient("app:para", "4U6nCAD+JscgLEgi7Apubfnt+TLkFUsX+HfDm7J10SBcHA8YRGY+zA==", ctx);
-            pc.setEndpoint("http://192.168.0.114:8080");
+            pc = new ParaClient("app:para", "HO29xPlZUpHYg6/qbgqDjZ5MyTNGte5lAy+UlB+2qDkseutNNOqsHQ==", ctx);
+            pc.setEndpoint("http://192.168.0.113:8080");
         }
         return pc;
     }
@@ -88,7 +88,7 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
     private ParaClient pc2() {
         if (pc2 == null) {
             pc2 = new ParaClient("app:para", null, ctx);
-            pc2.setEndpoint("http://192.168.0.114:8080");
+            pc2.setEndpoint("http://192.168.0.113:8080");
         }
         return pc2;
     }
@@ -631,6 +631,34 @@ public class ParaClientSyncTest extends ActivityInstrumentationTestCase2<TestAct
 
         pc().revokeAllResourcePermissionsSync(ALLOW_ALL);
         pc().revokeAllResourcePermissionsSync(u1().getId());
+    }
+
+    @Test
+    public void testAppSettings() {
+        Map<String, Object> settings = pc().appSettingsSync();
+        assertNotNull(settings);
+        assertTrue(settings.isEmpty());
+
+        pc().addAppSettingSync("", null);
+        pc().addAppSettingSync(" ", " ");
+        pc().addAppSettingSync(null, " ");
+        pc().addAppSettingSync("prop1", 1);
+        pc().addAppSettingSync("prop2", true);
+        pc().addAppSettingSync("prop3", "string");
+
+        assertEquals(3, pc().appSettingsSync().size());
+        assertEquals(pc().appSettingsSync(), pc().appSettingsSync(null));
+        assertEquals(Collections.singletonMap("value", 1), pc().appSettingsSync("prop1"));
+        assertEquals(Collections.singletonMap("value", true), pc().appSettingsSync("prop2"));
+        assertEquals(Collections.singletonMap("value", "string"), pc().appSettingsSync("prop3"));
+
+        pc().removeAppSettingSync("prop3");
+        pc().removeAppSettingSync(" ");
+        pc().removeAppSettingSync(null);
+        assertTrue(pc().appSettingsSync("prop3").isEmpty());
+        assertEquals(2, pc().appSettingsSync().size());
+        pc().removeAppSettingSync("prop2");
+        pc().removeAppSettingSync("prop1");
     }
 
     @Test

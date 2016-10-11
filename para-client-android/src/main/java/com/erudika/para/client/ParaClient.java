@@ -2480,6 +2480,107 @@ public final class ParaClient {
     }
 
     /////////////////////////////////////////////
+    //				App Settings
+    /////////////////////////////////////////////
+
+    /**
+     * Returns the map containing app-specific settings.
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void appSettings(final Listener<Map<String, Object>> callback, ErrorListener... error) {
+        invokeGet("_settings", null, Map.class, callback, error);
+    }
+
+    /**
+     * Returns the map containing app-specific settings.
+     * @return a map
+     */
+    public Map<String, Object> appSettingsSync() {
+        return invokeSyncGet("_settings", null, Map.class);
+    }
+
+    /**
+     * Returns the value of a specific app setting (property).
+     * @param key a key
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void appSettings(String key, final Listener<Map<String, Object>> callback,
+                                           ErrorListener... error) {
+        if (StringUtils.isBlank(key)) {
+            appSettings(callback, error);
+        }
+        invokeGet(ClientUtils.formatMessage("_settings/{0}", key), null, Map.class, callback, error);
+    }
+
+    /**
+     * Returns the value of a specific app setting (property).
+     * @param key a key
+     * @return a map containing one element {"value": "the_value"} or an empty map.
+     */
+    public Map<String, Object> appSettingsSync(String key) {
+        if (StringUtils.isBlank(key)) {
+            return appSettingsSync();
+        }
+        return invokeSyncGet(ClientUtils.formatMessage("_settings/{0}", key), null, Map.class);
+    }
+
+    /**
+     * Adds or overwrites an app-specific setting.
+     * @param key a key
+     * @param value a value
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void addAppSetting(String key, Object value, final Listener<Map<String, Object>> callback,
+                                  ErrorListener... error) {
+        if (!StringUtils.isBlank(key) && value != null) {
+            invokePut(ClientUtils.formatMessage("_settings/{0}", key),
+                    Collections.singletonMap("value", value), Map.class, callback, error);
+        } else {
+            fail(callback, Collections.emptyMap());
+        }
+    }
+
+    /**
+     * Adds or overwrites an app-specific setting.
+     * @param key a key
+     * @param value a value
+     */
+    public void addAppSettingSync(String key, Object value) {
+        if (!StringUtils.isBlank(key) && value != null) {
+            invokeSyncPut(ClientUtils.formatMessage("_settings/{0}", key),
+                    Collections.singletonMap("value", value), Map.class);
+        }
+    }
+
+    /**
+     * Removes an app-specific setting.
+     * @param key a key
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void removeAppSetting(String key, final Listener<Map<String, Object>> callback,
+                                 ErrorListener... error) {
+        if (!StringUtils.isBlank(key)) {
+            invokeDelete(ClientUtils.formatMessage("_settings/{0}", key),
+                    null, Map.class, callback, error);
+        } else {
+            fail(callback, Collections.emptyMap());
+        }
+    }
+
+    /**
+     * Removes an app-specific setting.
+     * @param key a key
+     */
+    public void removeAppSettingSync(String key) {
+        if (!StringUtils.isBlank(key)) {
+            invokeSyncDelete(ClientUtils.formatMessage("_settings/{0}", key), null, Map.class);
+        }
+    }
+    /////////////////////////////////////////////
     //				Access Tokens
     /////////////////////////////////////////////
 
