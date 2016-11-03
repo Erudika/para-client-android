@@ -91,7 +91,7 @@ install {
                 packaging 'aar'
                 name 'para-client-android'
                 description = 'Android client library for Para'
-                url 'http://www.paraio.org'
+                url 'https://paraio.org'
                 licenses {
                     license {
                         name 'The Apache Software License, Version 2.0'
@@ -152,7 +152,7 @@ allprojects {
             userOrg = "erudika"
             repo = "releases"
             name = "para-client-android"
-            websiteUrl = "http://www.paraio.org"
+            websiteUrl = "https://paraio.org"
             issueTrackerUrl = 'https://github.com/Erudika/para-client-android/issues'
             githubRepo = 'Erudika/para-client-android'
             githubReleaseNotesFile = 'README.md'
