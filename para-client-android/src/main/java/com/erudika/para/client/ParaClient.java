@@ -163,6 +163,35 @@ public final class ParaClient {
     }
 
     /**
+     * Returns the version of Para server.
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void getServerVersion(final Listener<String> callback, ErrorListener... error) {
+        invokeGet("", null, Map.class, new Listener<Map<String, Object>>() {
+            public void onResponse(Map<String, Object> res) {
+                if (res == null || StringUtils.isBlank((String) res.get("version"))) {
+                    callback.onResponse("unknown");
+                } else {
+                    callback.onResponse((String) res.get("version"));
+                }
+            }
+        }, error);
+    }
+
+    /**
+     * @return the version of Para server
+     */
+    public String getServerVersionSync() {
+        Map<String, Object> res = invokeSyncGet("", null, Map.class);
+        if (res == null || StringUtils.isBlank((String) res.get("version"))) {
+            return "unknown";
+        } else {
+            return (String) res.get("version");
+        }
+    }
+
+    /**
      * @return the JWT access token, or null if not signed in
      */
     public String getAccessToken() {
@@ -224,10 +253,7 @@ public final class ParaClient {
             }
             return "Bearer " + tokenKey;
         }
-        return secretKey;/**
-         * Sets the host URL of the Para server.
-         * @param endpoint the Para server location
-         */
+        return secretKey;
     }
 
     private <T> void fail(Listener<T> callback, Object returnValue) {
@@ -281,7 +307,9 @@ public final class ParaClient {
         return getApiPath() + resourcePath;
     }
 
-    private <T> T invokeSignedSyncRequest(int method, String resourcePath, Map<String, Object> params,
+    private <T> T invokeSignedSyncRequest(int method, String resourcePath,
+                                          Map<String, String> headers,
+                                          Map<String, Object> params,
                                           Object entity, Class<T> returnType) {
         RequestFuture<T> future = RequestFuture.newFuture();
         ErrorListener error = onError();
@@ -333,23 +361,23 @@ public final class ParaClient {
     }
 
     private <T> T invokeSyncGet(String resourcePath, Map<String, Object> params, Class<T> returnType) {
-        return invokeSignedSyncRequest(GET, resourcePath, params, null, returnType);
+        return invokeSignedSyncRequest(GET, resourcePath, null, params, null, returnType);
     }
 
     private <T> T invokeSyncPost(String resourcePath, Object entity, Class<T> returnType) {
-        return invokeSignedSyncRequest(POST, resourcePath, null, entity, returnType);
+        return invokeSignedSyncRequest(POST, resourcePath, null, null, entity, returnType);
     }
 
     private <T> T invokeSyncPut(String resourcePath, Object entity, Class<T> returnType) {
-        return invokeSignedSyncRequest(PUT, resourcePath, null, entity, returnType);
+        return invokeSignedSyncRequest(PUT, resourcePath, null, null, entity, returnType);
     }
 
     private <T> T invokeSyncPatch(String resourcePath, Object entity, Class<T> returnType) {
-        return invokeSignedSyncRequest(PATCH, resourcePath, null, entity, returnType);
+        return invokeSignedSyncRequest(PATCH, resourcePath, null, null, entity, returnType);
     }
 
     private <T> T invokeSyncDelete(String resourcePath, Map<String, Object> params, Class<T> returnType) {
-        return invokeSignedSyncRequest(DELETE, resourcePath, params, null, returnType);
+        return invokeSignedSyncRequest(DELETE, resourcePath, null, params, null, returnType);
     }
 
     private Map<String, Object> pagerToParams(Pager... pager) {
@@ -2134,6 +2162,110 @@ public final class ParaClient {
         return (P) invokeSyncGet("_me", null, Sysprop.class);
     }
 
+    /**
+     * Verifies a given JWT and returns the authenticated subject.
+     * This request will not remember the JWT in memory.
+     * @param accessToken a valid JWT access token
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void me(String accessToken, Listener<? extends ParaObject> callback, ErrorListener... error) {
+        if (!StringUtils.isBlank(accessToken)) {
+            String auth = accessToken.startsWith("Bearer") ? accessToken : "Bearer " + accessToken;
+            Map<String, String> headers = new HashMap<String, String>();
+            headers.put("Authorization", auth);
+            getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(true), GET,
+                    getEndpoint(), getFullPath("_me"), headers, null, null, Sysprop.class,
+                    callback, onError(error)));
+        } else {
+            invokeGet("_me", null, Sysprop.class, callback, error);
+        }
+    }
+
+    /**
+     * Verifies a given JWT and returns the authenticated subject.
+     * This request will not remember the JWT in memory.
+     * @param <P> an App or User
+     * @param accessToken a valid JWT access token
+     * @return a User or an App
+     */
+    public <P extends ParaObject> P meSync(String accessToken) {
+        if (!StringUtils.isBlank(accessToken)) {
+            String auth = accessToken.startsWith("Bearer") ? accessToken : "Bearer " + accessToken;
+            Map<String, String> headers = new HashMap<String, String>();
+            headers.put("Authorization", auth);
+            return (P) invokeSignedSyncRequest(GET, getFullPath("_me"), headers, null, null, Sysprop.class);
+        }
+        return meSync();
+    }
+
+    /**
+     * Upvote an object and register the vote in DB.
+     * @param obj the object to receive +1 votes
+     * @param voterid the userid of the voter
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void voteUp(ParaObject obj, String voterid, final Listener<Boolean> callback,
+                          ErrorListener... error) {
+        vote(obj, voterid, true, callback, error);
+    }
+
+    /**
+     * Upvote an object and register the vote in DB.
+     * @param obj the object to receive +1 votes
+     * @param voterid the userid of the voter
+     * @return true if vote was successful
+     */
+    public boolean voteUpSync(ParaObject obj, String voterid) {
+        return voteSync(obj, voterid, true);
+    }
+
+    /**
+     * Downvote an object and register the vote in DB.
+     * @param obj the object to receive +1 votes
+     * @param voterid the userid of the voter
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void voteDown(ParaObject obj, String voterid, final Listener<Boolean> callback,
+                       ErrorListener... error) {
+        vote(obj, voterid, false, callback, error);
+    }
+
+    /**
+     * Downvote an object and register the vote in DB.
+     * @param obj the object to receive -1 votes
+     * @param voterid the userid of the voter
+     * @return true if vote was successful
+     */
+    public boolean voteDownSync(ParaObject obj, String voterid) {
+        return voteSync(obj, voterid, false);
+    }
+
+    private void vote(ParaObject obj, String voterid, boolean isUpvote,
+                      final Listener<Boolean> callback, ErrorListener... error) {
+        if (obj == null || StringUtils.isBlank(voterid)) {
+            fail(callback, false);
+        }
+        String val = isUpvote ? "_voteup" : "_votedown";
+        invokePatch(obj.getType().concat("/").concat(obj.getId()),
+                Collections.singletonMap(val, voterid), String.class, new Listener<String>() {
+                    public void onResponse(String res) {
+                        callback.onResponse(res == null ? false : Boolean.parseBoolean(res));
+                    }
+                }, error);
+    }
+
+    private boolean voteSync(ParaObject obj, String voterid, boolean isUpvote) {
+        if (obj == null || StringUtils.isBlank(voterid)) {
+            return false;
+        }
+        String val = isUpvote ? "_voteup" : "_votedown";
+        return invokeSyncPatch(obj.getType().concat("/").concat(obj.getId()),
+                Collections.singletonMap(val, voterid), Boolean.class);
+    }
+
     /////////////////////////////////////////////
     //			Validation Constraints
     /////////////////////////////////////////////
@@ -2597,8 +2729,8 @@ public final class ParaClient {
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
-    public void signIn(String provider, String providerToken, final Listener<Sysprop> callback,
-                       final ErrorListener... error) {
+    public void signIn(String provider, String providerToken, boolean rememberJWT,
+                       final Listener<Sysprop> callback, final ErrorListener... error) {
         if (!StringUtils.isBlank(provider) && !StringUtils.isBlank(providerToken)) {
             Map<String, String> credentials = new HashMap<String, String>();
             credentials.put("appid", accessKey);
@@ -2634,6 +2766,18 @@ public final class ParaClient {
     }
 
     /**
+     * @see #signIn(String, String, boolean, Listener, ErrorListener...)
+     * @param provider identity provider, e.g. 'facebook', 'google'...
+     * @param providerToken access token from a provider like Facebook, Google, Twitter
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void signIn(String provider, String providerToken, final Listener<Sysprop> callback,
+                       final ErrorListener... error) {
+        signIn(provider, providerToken, true, callback, error);
+    }
+
+    /**
      * Takes an identity provider access token and fetches the user data from that provider.
      * A new User object is created if that user doesn't exist.
      * Access tokens are returned upon successful authentication using one of the SDKs from
@@ -2645,7 +2789,7 @@ public final class ParaClient {
      * @param providerToken access token from a provider like Facebook, Google, Twitter
      * @return a User object or null if something failed
      */
-    public Sysprop signInSync(String provider, String providerToken) {
+    public Sysprop signInSync(String provider, String providerToken, boolean rememberJWT) {
         if (!StringUtils.isBlank(provider) && !StringUtils.isBlank(providerToken)) {
             Map<String, String> credentials = new HashMap<String, String>();
             credentials.put("appid", accessKey);
@@ -2654,14 +2798,25 @@ public final class ParaClient {
             Map<String, Object> result = invokeSyncPost(JWT_PATH, credentials, Map.class);
             if (result != null && result.containsKey("user") && result.containsKey("jwt")) {
                 Map<?, ?> jwtData = (Map<?, ?>) result.get("jwt");
-                Map<String, Object> userData = (Map<String, Object>) result.get("user");
-                saveAccessToken(jwtData);
-                return ClientUtils.setFields(Sysprop.class, userData);
+                if (rememberJWT) {
+                    saveAccessToken(jwtData);
+                }
+                return ClientUtils.setFields(Sysprop.class, (Map<String, Object>) result.get("user"));
             } else {
                 clearAccessToken();
             }
         }
         return null;
+    }
+
+    /**
+     * @see #signInSync(String, String, boolean)
+     * @param provider identity provider, e.g. 'facebook', 'google'...
+     * @param providerToken access token from a provider like Facebook, Google, Twitter
+     * @return a User object or null if something failed
+     */
+    public Sysprop signInSync(String provider, String providerToken) {
+        return signInSync(provider, providerToken, true);
     }
 
     /**
