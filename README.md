@@ -36,6 +36,9 @@ client.signIn("facebook", "fb_access_token", new Response.Listener<ParaObject>()
     }
 });
 ```
+It's a bad idea to hardcode your Para secret key in your code because it will run in an insecure client-side environment. Instead use the `signIn()` method to get an access token (JWT) with limited client permissions. Think of it like this: API key+secret = **full API access**, `paraClient.signIn()` = **limited API access** for clients with JWT tokens. 
+You can have a [special user object created](http://paraio.org/docs/#034-api-jwt-signin) just for your Android app and assign it special permissions so that your app can access a part of the Para API before authenticating another real user. [Read the documentation for more information about client permissions](http://paraio.org/docs/#012-permissions).
+For granting resource permissions to your client users go to [console.paraio.org](https://console.paraio.org) where you can edit your app object and allow your users the call specific API methods.
 
 The Android client uses Volley for HTTP requests so all requests are asynchronous, unless you use
 the methods that end in `Sync()`. These methods are executed synchronously and will block.
