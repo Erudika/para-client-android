@@ -1355,8 +1355,12 @@ public final class ParaClient {
                       Listener<Map<String, Object>> callback, ErrorListener... error) {
         Map<String, Object> map = new HashMap<String, Object>();
         if (params != null && !params.isEmpty()) {
-            String qType = StringUtils.isBlank(queryType) ? "" : "/".concat(queryType);
-            invokeGet("search".concat(qType), params, Map.class, callback, error);
+            String qType = StringUtils.isBlank(queryType) ? "/default" : "/".concat(queryType);
+            if (!params.containsKey("type") || StringUtils.isBlank((String) params.get("type"))) {
+                invokeGet("search".concat(qType), params, Map.class, callback, error);
+            } else {
+                invokeGet(params.get("type") + "/search" + qType, params, Map.class, callback, error);
+            }
             return;
         } else {
             map.put("items", Collections.emptyList());
@@ -1368,8 +1372,12 @@ public final class ParaClient {
     private Map<String, Object> findSync(String queryType, Map<String, Object> params) {
         Map<String, Object> map = new HashMap<String, Object>();
         if (params != null && !params.isEmpty()) {
-            String qType = StringUtils.isBlank(queryType) ? "" : "/".concat(queryType);
-            return invokeSyncGet("search".concat(qType), params, Map.class);
+            String qType = StringUtils.isBlank(queryType) ? "/default" : "/".concat(queryType);
+            if (!params.containsKey("type") || StringUtils.isBlank((String) params.get("type"))) {
+                return invokeSyncGet("search".concat(qType), params, Map.class);
+            } else {
+                return invokeSyncGet(params.get("type") + "/search" + qType, params, Map.class);
+            }
         } else {
             map.put("items", Collections.emptyList());
             map.put("totalHits", 0);
@@ -2684,6 +2692,31 @@ public final class ParaClient {
         if (!StringUtils.isBlank(key) && value != null) {
             invokeSyncPut(ClientUtils.formatMessage("_settings/{0}", key),
                     Collections.singletonMap("value", value), Map.class);
+        }
+    }
+
+    /**
+     * Overwrites all app-specific settings.
+     * @param settings a key-value map of properties
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void setAppSettings(Map<String, Object> settings, final Listener<Map<String, Object>> callback,
+                              ErrorListener... error) {
+        if (settings != null) {
+            invokePut("_settings", settings, Map.class, callback, error);
+        } else {
+            fail(callback, Collections.emptyMap());
+        }
+    }
+
+    /**
+     * Overwrites all app-specific settings.
+     * @param settings a key-value map of properties
+     */
+    public void setAppSettingsSync(Map<String, Object> settings) {
+        if (settings != null) {
+            invokeSyncPut("_settings", settings, Map.class);
         }
     }
 

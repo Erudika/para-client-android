@@ -170,7 +170,7 @@ public class ParaClientTest {
     private static Sysprop s1() {
         if (s1 == null) {
             s1 = new Sysprop("s1");
-            s1.setName("This is a little test sentence. Testing, one, two, three.");
+            s1.addProperty("text", "This is a little test sentence. Testing, one, two, three.");
             s1.setTimestamp(System.currentTimeMillis());
         }
         return s1;
@@ -179,7 +179,7 @@ public class ParaClientTest {
     private static Sysprop s2() {
         if (s2 == null) {
             s2 = new Sysprop("s2");
-            s2.setName("We are testing this thing. This sentence is a test. One, two.");
+            s2.addProperty("text", "We are testing this thing. This sentence is a test. One, two.");
             s2.setTimestamp(System.currentTimeMillis());
         }
         return s2;
@@ -552,7 +552,7 @@ public class ParaClientTest {
             }
         });
 
-        pc().findPrefix(u().getType(), "name", "ann", null, new Listener<List<ParaObject>>() {
+        pc().findPrefix(u().getType(), "name", "Ann", null, new Listener<List<ParaObject>>() {
             public void onResponse(List<ParaObject> res) {
                 assertFalse(res.isEmpty());
             }
@@ -573,12 +573,12 @@ public class ParaClientTest {
                 assertEquals(2, res.size());
             }
         });
-        pc().findQuery(u().getType(), "ann", null, new Listener<List<ParaObject>>() {
+        pc().findQuery(u().getType(), "Ann*", null, new Listener<List<ParaObject>>() {
             public void onResponse(List<ParaObject> res) {
                 assertFalse(res.isEmpty());
             }
         });
-        pc().findQuery(u().getType(), "Ann", null, new Listener<List<ParaObject>>() {
+        pc().findQuery(u().getType(), "Ann*", null, new Listener<List<ParaObject>>() {
             public void onResponse(List<ParaObject> res) {
                 assertFalse(res.isEmpty());
             }
@@ -610,7 +610,8 @@ public class ParaClientTest {
                 assertTrue(res.isEmpty());
             }
         });
-        pc().findSimilar(s1().getType(), s1().getId(), new String[]{"name"}, s1().getName(), null,
+        pc().findSimilar(s1().getType(), s1().getId(), new String[]{"properties.text"},
+                (String) s1().getProperty("text"), null,
                 new Listener<List<ParaObject>>() {
             public void onResponse(List<ParaObject> res) {
                 assertFalse(res.isEmpty());
@@ -752,7 +753,7 @@ public class ParaClientTest {
                 assertTrue(res.isEmpty());
             }
         });
-        pc().findWildcard(u().getType(), "name", "an*", null, new Listener<List<ParaObject>>() {
+        pc().findWildcard(u().getType(), "name", "An*", null, new Listener<List<ParaObject>>() {
             public void onResponse(List<ParaObject> res) {
                 assertFalse(res.isEmpty());
             }
@@ -1351,12 +1352,7 @@ public class ParaClientTest {
                                                 });
                                             }
                                         });
-                                        pc().removeAppSetting(" ", new Listener<Map<String, Object>>() {
-                                            public void onResponse(Map<String, Object> response) {
-                                                assertTrue(response.isEmpty());
-                                            }
-                                        });
-                                        pc().removeAppSetting(" ", new Listener<Map<String, Object>>() {
+                                        pc().setAppSettings(new HashMap<String, Object>(0), new Listener<Map<String, Object>>() {
                                             public void onResponse(Map<String, Object> response) {
                                                 assertTrue(response.isEmpty());
                                             }

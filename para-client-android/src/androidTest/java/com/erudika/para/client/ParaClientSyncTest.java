@@ -166,7 +166,7 @@ public class ParaClientSyncTest {
     private static Sysprop s1() {
         if (s1 == null) {
             s1 = new Sysprop("s1");
-            s1.setName("This is a little test sentence. Testing, one, two, three.");
+            s1.addProperty("text", "This is a little test sentence. Testing, one, two, three.");
             s1.setTimestamp(System.currentTimeMillis());
         }
         return s1;
@@ -175,7 +175,7 @@ public class ParaClientSyncTest {
     private static Sysprop s2() {
         if (s2 == null) {
             s2 = new Sysprop("s2");
-            s2.setName("We are testing this thing. This sentence is a test. One, two.");
+            s2.addProperty("text", "We are testing this thing. This sentence is a test. One, two.");
             s2.setTimestamp(System.currentTimeMillis());
         }
         return s2;
@@ -372,13 +372,13 @@ public class ParaClientSyncTest {
 
         assertTrue(pc().findPrefixSync(null, null, "").isEmpty());
         assertTrue(pc().findPrefixSync("", "null", "xx").isEmpty());
-        assertFalse(pc().findPrefixSync(u().getType(), "name", "ann").isEmpty());
+        assertFalse(pc().findPrefixSync(u().getType(), "name", "Ann").isEmpty());
 
         assertFalse(pc().findQuerySync(null, null).isEmpty());
         assertFalse(pc().findQuerySync("", "*").isEmpty());
         assertEquals(2, pc().findQuerySync(a1().getType(), "country:US").size());
-        assertFalse(pc().findQuerySync(u().getType(), "ann").isEmpty());
-        assertFalse(pc().findQuerySync(u().getType(), "Ann").isEmpty());
+        assertFalse(pc().findQuerySync(u().getType(), "Ann*").isEmpty());
+        assertFalse(pc().findQuerySync(u().getType(), "Ann*").isEmpty());
         assertTrue(pc().findQuerySync(null, "*").size() > 4);
 
         Pager p = new Pager();
@@ -389,7 +389,8 @@ public class ParaClientSyncTest {
 
         assertTrue(pc().findSimilarSync(t().getType(), "", null, null).isEmpty());
         assertTrue(pc().findSimilarSync(t().getType(), "", new String[0], "").isEmpty());
-        res = pc().findSimilarSync(s1().getType(), s1().getId(), new String[]{"name"}, s1().getName());
+        res = pc().findSimilarSync(s1().getType(), s1().getId(), new String[]{"properties.text"},
+                (String) s1().getProperty("text"));
         assertFalse(res.isEmpty());
         assertEquals(s2(), res.get(0));
 
@@ -443,7 +444,7 @@ public class ParaClientSyncTest {
 
         assertTrue(pc().findWildcardSync(u().getType(), null, null).isEmpty());
         assertTrue(pc().findWildcardSync(u().getType(), "", "").isEmpty());
-        assertFalse(pc().findWildcardSync(u().getType(), "name", "an*").isEmpty());
+        assertFalse(pc().findWildcardSync(u().getType(), "name", "An*").isEmpty());
 
         assertTrue(pc().getCountSync(null).intValue() > 4);
         assertFalse(pc().getCountSync("").intValue() == 0);
@@ -655,8 +656,7 @@ public class ParaClientSyncTest {
         pc().removeAppSettingSync(null);
         assertTrue(pc().appSettingsSync("prop3").isEmpty());
         assertEquals(2, pc().appSettingsSync().size());
-        pc().removeAppSettingSync("prop2");
-        pc().removeAppSettingSync("prop1");
+        pc().setAppSettingsSync(new HashMap<String, Object>(0));
     }
 
     @Test
