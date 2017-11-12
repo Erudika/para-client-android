@@ -23,11 +23,10 @@ import com.android.volley.RequestQueue;
 import static com.android.volley.Response.*;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.BasicNetwork;
-import com.android.volley.toolbox.HurlStack;
 import com.android.volley.toolbox.NoCache;
-import com.android.volley.toolbox.OkHttp3Stack;
 import com.android.volley.toolbox.RequestFuture;
 import com.android.volley.toolbox.Volley;
+import com.erudika.para.client.utils.OkHttp3Stack;
 import com.erudika.para.client.utils.Pager;
 import com.erudika.para.client.utils.Signer;
 import com.erudika.para.client.utils.ClientUtils;
@@ -283,7 +282,14 @@ public final class ParaClient {
         }
     }
 
-    private <T> T readEntity(Class<T> clazz, byte[] data) {
+    /**
+     * Deserializes a Response object to POJO of some type.
+     * @param clazz type
+     * @param data input stream
+     * @param <T> type
+     * @return ParaObject
+     */
+    public <T> T readEntity(Class<T> clazz, byte[] data) {
         if (data == null) {
             return null;
         }
@@ -295,7 +301,11 @@ public final class ParaClient {
         }
     }
 
-    private String getFullPath(String resourcePath) {
+    /**
+     * @param resourcePath API subpath
+     * @return the full resource path, e.g. "/v1/path"
+     */
+    protected String getFullPath(String resourcePath) {
         if (StringUtils.startsWith(resourcePath, JWT_PATH)) {
             return resourcePath;
         }
@@ -307,7 +317,7 @@ public final class ParaClient {
         return getApiPath() + resourcePath;
     }
 
-    private <T> T invokeSignedSyncRequest(int method, String resourcePath,
+    protected <T> T invokeSignedSyncRequest(int method, String resourcePath,
                                           Map<String, String> headers,
                                           Map<String, Object> params,
                                           Object entity, Class<T> returnType) {
@@ -325,62 +335,147 @@ public final class ParaClient {
         return null;
     }
 
-    private void invokeGet(String resourcePath, Map<String, Object> params, Class<?> returnType,
+    /**
+     * Invoke a GET request to the Para API.
+     * @param resourcePath the subpath after '/v1/', should not start with '/'
+     * @param params query parameters
+     * @param returnType type
+     * @param success callback
+     * @param error callback
+     */
+    public void invokeGet(String resourcePath, Map<String, Object> params, Class<?> returnType,
                            Listener<?> success, ErrorListener... error) {
         getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(!JWT_PATH.equals(resourcePath)), GET,
                 getEndpoint(), getFullPath(resourcePath), null, params, null, returnType,
                 success, onError(error)));
     }
 
-    private void invokePost(String resourcePath, Object entity, Class<?> returnType,
+    /**
+     * Invoke a POST request to the Para API.
+     * @param resourcePath the subpath after '/v1/', should not start with '/'
+     * @param entity request body
+     * @param returnType type
+     * @param success callback
+     * @param error callback
+     */
+    public void invokePost(String resourcePath, Object entity, Class<?> returnType,
                             Listener<?> success, ErrorListener... error) {
         getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(false), POST,
                 getEndpoint(), getFullPath(resourcePath), null, null, entity, returnType,
                 success, onError(error)));
     }
 
-    private void invokePut(String resourcePath, Object entity, Class<?> returnType,
+    /**
+     * Invoke a PUT request to the Para API.
+     * @param resourcePath the subpath after '/v1/', should not start with '/'
+     * @param entity request body
+     * @param returnType type
+     * @param success callback
+     * @param error callback
+     */
+    public void invokePut(String resourcePath, Object entity, Class<?> returnType,
                            Listener<?> success, ErrorListener... error) {
         getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(false), PUT,
                 getEndpoint(), getFullPath(resourcePath), null, null, entity, returnType,
                 success, onError(error)));
     }
 
-    private void invokePatch(String resourcePath, Object entity, Class<?> returnType,
+    /**
+     * Invoke a PATCH request to the Para API.
+     * @param resourcePath the subpath after '/v1/', should not start with '/'
+     * @param entity request body
+     * @param returnType type
+     * @param success callback
+     * @param error callback
+     */
+    public void invokePatch(String resourcePath, Object entity, Class<?> returnType,
                              Listener<?> success, ErrorListener... error) {
         getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(false), PATCH,
                 getEndpoint(), getFullPath(resourcePath), null, null, entity, returnType,
                 success, onError(error)));
     }
 
-    private void invokeDelete(String resourcePath, Map<String, Object> params, Class<?> returnType,
+    /**
+     * Invoke a DELETE request to the Para API.
+     * @param resourcePath the subpath after '/v1/', should not start with '/'
+     * @param params query parameters
+     * @param returnType type
+     * @param success callback
+     * @param error callback
+     */
+    public void invokeDelete(String resourcePath, Map<String, Object> params, Class<?> returnType,
                               Listener<?> success, ErrorListener... error) {
         getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(false), DELETE,
                 getEndpoint(), getFullPath(resourcePath), null, params, null, returnType,
                 success, onError(error)));
     }
 
-    private <T> T invokeSyncGet(String resourcePath, Map<String, Object> params, Class<T> returnType) {
+    /**
+     * Invoke a GET request to the Para API.
+     * @param resourcePath the subpath after '/v1/', should not start with '/'
+     * @param params query parameters
+     * @param returnType type
+     * @param <T> type
+     * @return response
+     */
+    public <T> T invokeSyncGet(String resourcePath, Map<String, Object> params, Class<T> returnType) {
         return invokeSignedSyncRequest(GET, resourcePath, null, params, null, returnType);
     }
 
-    private <T> T invokeSyncPost(String resourcePath, Object entity, Class<T> returnType) {
+    /**
+     * Invoke a POST request to the Para API.
+     * @param resourcePath the subpath after '/v1/', should not start with '/'
+     * @param entity request body
+     * @param returnType type
+     * @param <T> type
+     * @return response
+     */
+    public <T> T invokeSyncPost(String resourcePath, Object entity, Class<T> returnType) {
         return invokeSignedSyncRequest(POST, resourcePath, null, null, entity, returnType);
     }
 
-    private <T> T invokeSyncPut(String resourcePath, Object entity, Class<T> returnType) {
+    /**
+     * Invoke a PUT request to the Para API.
+     * @param resourcePath the subpath after '/v1/', should not start with '/'
+     * @param entity request body
+     * @param returnType type
+     * @param <T> type
+     * @return response
+     */
+    public <T> T invokeSyncPut(String resourcePath, Object entity, Class<T> returnType) {
         return invokeSignedSyncRequest(PUT, resourcePath, null, null, entity, returnType);
     }
 
-    private <T> T invokeSyncPatch(String resourcePath, Object entity, Class<T> returnType) {
+    /**
+     * Invoke a PATCH request to the Para API.
+     * @param resourcePath the subpath after '/v1/', should not start with '/'
+     * @param entity request body
+     * @param returnType type
+     * @param <T> type
+     * @return response
+     */
+    public <T> T invokeSyncPatch(String resourcePath, Object entity, Class<T> returnType) {
         return invokeSignedSyncRequest(PATCH, resourcePath, null, null, entity, returnType);
     }
 
-    private <T> T invokeSyncDelete(String resourcePath, Map<String, Object> params, Class<T> returnType) {
+    /**
+     * Invoke a DELETE request to the Para API.
+     * @param resourcePath the subpath after '/v1/', should not start with '/'
+     * @param params query parameters
+     * @param returnType type
+     * @param <T> type
+     * @return response
+     */
+    public <T> T invokeSyncDelete(String resourcePath, Map<String, Object> params, Class<T> returnType) {
         return invokeSignedSyncRequest(DELETE, resourcePath, null, params, null, returnType);
     }
 
-    private Map<String, Object> pagerToParams(Pager... pager) {
+    /**
+     * Converts a {@link Pager} object to query parameters.
+     * @param pager a Pager
+     * @return list of query parameters
+     */
+    public Map<String, Object> pagerToParams(Pager... pager) {
         Map<String, Object> map = new HashMap<String, Object>();
         if (pager != null && pager.length > 0) {
             Pager p = pager[0];
@@ -388,6 +483,9 @@ public final class ParaClient {
                 map.put("page", Collections.singletonList(Long.toString(p.getPage())));
                 map.put("desc", Collections.singletonList(Boolean.toString(p.isDesc())));
                 map.put("limit", Collections.singletonList(Integer.toString(p.getLimit())));
+                if (p.getLastKey() != null) {
+                    map.put("lastKey", Collections.singletonList(p.getLastKey()));
+                }
                 if (p.getSortby() != null) {
                     map.put("sort", Collections.singletonList(p.getSortby()));
                 }
@@ -396,7 +494,12 @@ public final class ParaClient {
         return map;
     }
 
-    private List<ParaObject> getItemsFromList(List<Map<String, Object>> result) {
+    /**
+     * Deserializes ParaObjects from a JSON array (the "items:[]" field in search results).
+     * @param result a list of deserialized maps
+     * @return a list of ParaObjects
+     */
+    public List<ParaObject> getItemsFromList(List<Map<String, Object>> result) {
         if (result != null && !result.isEmpty()) {
             // this isn't very efficient but there's no way to know what type of objects we're reading
             List<ParaObject> objects = new ArrayList<ParaObject>(result.size());
@@ -411,14 +514,31 @@ public final class ParaClient {
         return Collections.emptyList();
     }
 
-    private <P extends ParaObject> List<P> getItems(Map<String, Object> result, Pager... pager) {
-        if (result != null && !result.isEmpty() && result.containsKey("items")) {
-            if (pager != null && pager.length > 0 && pager[0] != null && result.containsKey("totalHits")) {
-                pager[0].setCount(((Integer) result.get("totalHits")).longValue());
+    /**
+     * Converts a list of Maps to a List of ParaObjects, at a given path within the JSON tree structure.
+     * @param <P> type
+     * @param at the path (field) where the array of objects is located
+     * @param result the response body for an API request
+     * @param pager a {@link Pager} object
+     * @return a list of ParaObjects
+     */
+    public <P extends ParaObject> List<P> getItems(String at, Map<String, Object> result, Pager... pager) {
+        if (result != null && !result.isEmpty() && !StringUtils.isBlank(at) && result.containsKey(at)) {
+            if (pager != null && pager.length > 0 && pager[0] != null) {
+                if (result.containsKey("totalHits")) {
+                    pager[0].setCount(((Integer) result.get("totalHits")).longValue());
+                }
+                if (result.containsKey("lastKey")) {
+                    pager[0].setLastKey((String) result.get("lastKey"));
+                }
             }
-            return (List<P>) getItemsFromList((List<Map<String, Object>>) result.get("items"));
+            return (List<P>) getItemsFromList((List<Map<String, Object>>) result.get(at));
         }
         return Collections.emptyList();
+    }
+
+    public <P extends ParaObject> List<P> getItems(Map<String, Object> result, Pager... pager) {
+        return getItems("items", result, pager);
     }
 
     /////////////////////////////////////////////

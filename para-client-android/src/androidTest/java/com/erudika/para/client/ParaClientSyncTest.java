@@ -80,7 +80,7 @@ public class ParaClientSyncTest {
 
     private static ParaClient pc() {
         if (pc == null) {
-            pc = new ParaClient("app:para", "VIJccBA/b2kwqgdLW8UdaEEbNDlU4A8nYt+zrXjGhOpB2jgGPCg/+A==", ctx);
+            pc = new ParaClient("app:para", "xC2/S0vrq41lYlFliGmKfmuuQBe1ixf2DXbgzbCq0q6TIu6W66uH3g==", ctx);
             pc.setEndpoint("http://192.168.0.113:8080");
         }
         return pc;
