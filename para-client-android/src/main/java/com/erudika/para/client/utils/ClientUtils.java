@@ -57,18 +57,13 @@ public final class ClientUtils {
     public static final String GUEST = "?";
     private static final String PREFS_FILE = "ParaClientPrefs";
     private static final ObjectMapper jsonMapper = new ObjectMapper();
-    private static final ObjectReader jsonReader;
-    private static final ObjectWriter jsonWriter;
 
     static {
         jsonMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
         jsonMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
         jsonMapper.enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
         jsonMapper.enable(SerializationFeature.INDENT_OUTPUT);
-        jsonMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-        jsonMapper.disable(SerializationFeature.WRITE_NULL_MAP_VALUES);
-        jsonReader = jsonMapper.reader();
-        jsonWriter = jsonMapper.writer();
+        jsonMapper.setSerializationInclusion(JsonInclude.Include.USE_DEFAULTS);
     }
 
     private ClientUtils() { }
@@ -89,7 +84,7 @@ public final class ClientUtils {
      * @return JSON object reader
      */
     public static ObjectReader getJsonReader(Class<?> type) {
-        return jsonReader.forType(type);
+        return jsonMapper.readerFor(type);
     }
 
     /**
@@ -98,7 +93,7 @@ public final class ClientUtils {
      * @return JSON object writer
      */
     public static ObjectWriter getJsonWriter() {
-        return jsonWriter;
+        return jsonMapper.writer();
     }
 
     /**
@@ -107,7 +102,7 @@ public final class ClientUtils {
      * @return JSON object writer with indentation disabled
      */
     public static ObjectWriter getJsonWriterNoIdent() {
-        return jsonWriter.without(SerializationFeature.INDENT_OUTPUT);
+        return jsonMapper.writer().without(SerializationFeature.INDENT_OUTPUT);
     }
 
     /**

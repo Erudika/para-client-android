@@ -275,7 +275,7 @@ public final class ParaClient {
                         msg = error.containsKey("message") ? (String) error.get("message") : msg;
                         logger.error("{}:" + msg + " - {}", errorType, error.get("code"));
                     } else {
-                        logger.error("{} {}", msg, errorType);
+                        logger.error("{} - {} {}", err.networkResponse.statusCode, msg, errorType);
                     }
                 }
             };
