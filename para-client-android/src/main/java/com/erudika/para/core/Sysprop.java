@@ -43,6 +43,7 @@ public class Sysprop implements ParaObject {
     private String name;
     private List<String> tags;
     private Integer votes;
+    private Long version;
     private Boolean stored;
     private Boolean indexed;
     private Boolean cached;
@@ -256,6 +257,14 @@ public class Sysprop implements ParaObject {
 
     public void setVotes(Integer votes) {
         this.votes = votes;
+    }
+
+    public Long getVersion() {
+        return (version == null) ? 0 : version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     public int hashCode() {

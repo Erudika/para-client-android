@@ -187,6 +187,18 @@ public interface ParaObject extends Serializable {
     void setCached(Boolean isCached);
 
     /**
+     * Returns the version number for this object. Used primarily for optimistic locking.
+     * @return a positive number, {@code 0} if unused or {@code -1}, indicating a failed update.
+     */
+    Long getVersion();
+
+    /**
+     * Sets the version of this object. This value should come from the database.
+     * @param version a positive number, different than the current value of the version field
+     */
+    void setVersion(Long version);
+
+    /**
      * Returns the total sum of all votes for this object.
      * For example: (+6) + (-4) = 2
      * @return the total sum of votes
