@@ -325,7 +325,7 @@ public final class ParaClient {
         ErrorListener error = onError();
         boolean refreshJWT = !(method == GET && JWT_PATH.equals(resourcePath));
         getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(refreshJWT),
-                method, getEndpoint(), getFullPath(resourcePath), null, params,
+                method, getEndpoint(), getFullPath(resourcePath), headers, params,
                 entity, returnType, future, future));
         try {
             return future.get(requestTimeout, TimeUnit.SECONDS);
@@ -333,6 +333,17 @@ public final class ParaClient {
             error.onErrorResponse(new VolleyError(e));
         }
         return null;
+    }
+
+    protected <T> void invokeSignedRequest(int method, String resourcePath,
+                                          Map<String, String> headers,
+                                          Map<String, Object> params,
+                                          Object entity, Class<T> returnType,
+                                          Listener<?> success, ErrorListener... error) {
+        boolean refreshJWT = !(method == GET && JWT_PATH.equals(resourcePath));
+        getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(refreshJWT),
+                method, getEndpoint(), getFullPath(resourcePath), headers, params,
+                entity, returnType, success, onError(error)));
     }
 
     /**
@@ -2392,6 +2403,51 @@ public final class ParaClient {
         String val = isUpvote ? "_voteup" : "_votedown";
         return invokeSyncPatch(obj.getType().concat("/").concat(obj.getId()),
                 Collections.singletonMap(val, voterid), Boolean.class);
+    }
+
+    /**
+     * Rebuilds the entire search index.
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     * @return a response object with properties "tookMillis" and "reindexed"
+     */
+    public void rebuildIndex(Listener<Map<String, String>> callback, ErrorListener... error) {
+        invokePost("_reindex", null, Map.class, callback, error);
+    }
+
+    /**
+     * Rebuilds the entire search index.
+     * @return a response object with properties "tookMillis" and "reindexed"
+     */
+    public Map<String, Object> rebuildIndexSync() {
+        return invokeSyncPost("_reindex", null, Map.class);
+    }
+
+    /**
+     * Rebuilds the entire search index.
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     * @param destinationIndex an existing index as destination
+     * @return a response object with properties "tookMillis" and "reindexed"
+     */
+    public void rebuildIndex(String destinationIndex, Listener<Map<String, String>> callback,
+                             ErrorListener... error) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("destinationIndex", destinationIndex);
+        invokeSignedRequest(POST, getFullPath("_reindex"),
+                null, params, new byte[0], Map.class, callback, error);
+    }
+
+    /**
+     * Rebuilds the entire search index.
+     * @param destinationIndex an existing index as destination
+     * @return a response object with properties "tookMillis" and "reindexed"
+     */
+    public Map<String, Object> rebuildIndexSync(String destinationIndex) {
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("destinationIndex", destinationIndex);
+        return invokeSignedSyncRequest(POST, getFullPath("_reindex"),
+                null, params, new byte[0], Map.class);
     }
 
     /////////////////////////////////////////////

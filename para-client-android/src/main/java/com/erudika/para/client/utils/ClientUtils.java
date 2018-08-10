@@ -327,7 +327,7 @@ public final class ClientUtils {
                 }
             };
 
-            SSLContext context = SSLContext.getInstance("TLS");
+            SSLContext context = SSLContext.getInstance("TLSv1.2");
             context.init(null, trustAllCerts, new SecureRandom());
             customSocketFactory = context.getSocketFactory();
             HttpsURLConnection.setDefaultSSLSocketFactory(context.getSocketFactory());
