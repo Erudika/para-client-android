@@ -234,18 +234,6 @@ public final class ClientUtils {
     }
 
     /**
-     * Quick and dirty singular to plural conversion.
-     * @param singul a word
-     * @return a guess of its plural form
-     */
-    public static String singularToPlural(String singul) {
-        return StringUtils.isBlank(singul) ? singul :
-                (singul.endsWith("s") ? singul + "es" :
-                        (singul.endsWith("y") ? StringUtils.removeEndIgnoreCase(singul, "y") + "ies" :
-                                singul + "s"));
-    }
-
-    /**
      * Checks if a class is primitive, String or a primitive wrapper.
      *
      * @param clazz a class
@@ -266,6 +254,7 @@ public final class ClientUtils {
 
     /**
      * Populates a new ParaObject with data from a map.
+     * @param type type
      * @param data some data
      * @param <P> object type
      * @return a ParaObject
@@ -305,35 +294,5 @@ public final class ClientUtils {
             SharedPreferences prefs = ctx.getSharedPreferences(PREFS_FILE, Context.MODE_PRIVATE);
             prefs.edit().remove(key).commit();
         }
-    }
-
-    public static SSLSocketFactory newCustomSocketFactory(final String trustedHostname) {
-        SSLSocketFactory customSocketFactory = null;
-        try {
-            final HostnameVerifier hv = HttpsURLConnection.getDefaultHostnameVerifier();
-            HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
-                public boolean verify(String hostname, SSLSession session) {
-                    return hv.verify(trustedHostname, session);
-                }
-            });
-            TrustManager[] trustAllCerts = new TrustManager[] {
-                new X509TrustManager() {
-                    public X509Certificate[] getAcceptedIssuers() {
-                        X509Certificate[] myTrustedAnchors = new X509Certificate[0];
-                        return myTrustedAnchors;
-                    }
-                    public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-                    public void checkServerTrusted(X509Certificate[] certs, String authType) {}
-                }
-            };
-
-            SSLContext context = SSLContext.getInstance("TLSv1.2");
-            context.init(null, trustAllCerts, new SecureRandom());
-            customSocketFactory = context.getSocketFactory();
-            HttpsURLConnection.setDefaultSSLSocketFactory(context.getSocketFactory());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return customSocketFactory;
     }
 }

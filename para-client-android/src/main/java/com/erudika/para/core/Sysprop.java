@@ -47,6 +47,7 @@ public class Sysprop implements ParaObject {
     private Boolean stored;
     private Boolean indexed;
     private Boolean cached;
+    private String plural;
 
     private Map<String, Object> properties;
 
@@ -165,8 +166,8 @@ public class Sysprop implements ParaObject {
     }
 
     public String getObjectURI() {
-        String defurl = "/".concat(getPlural());
-        return (getId() != null) ? defurl.concat("/").concat(getId()) : defurl;
+        String defurl = "/".concat(ClientUtils.urlEncode(getType()));
+        return (getId() != null) ? defurl.concat("/").concat(ClientUtils.urlEncode(getId())) : defurl;
     }
 
     public List<String> getTags() {
@@ -232,7 +233,11 @@ public class Sysprop implements ParaObject {
     }
 
     public String getPlural() {
-        return ClientUtils.singularToPlural(getType());
+        return this.plural;
+    }
+
+    public void setPlural(String plural) {
+        this.plural = plural;
     }
 
     public String getParentid() {

@@ -44,6 +44,7 @@ public class ParaRequest<T> extends Request<T> {
 
     /**
      * Make an API request and return a parsed object from JSON.
+     * @param method HTTP method
      * @param url URL of the request to make
      * @param headers Map of request headers
      * @param jsonEntity request body

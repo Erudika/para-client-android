@@ -48,6 +48,10 @@ import org.apache.commons.lang3.math.NumberUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLSession;
+
 /**
  * The Java REST client for communicating with a Para API server.
  * @author Alex Bogdanovski [alex@erudika.com]
@@ -101,8 +105,14 @@ public final class ParaClient {
                     requestQueue = Volley.newRequestQueue(ctx.getApplicationContext(),
                             new OkHttp3Stack());
                 } else {
+                    final HostnameVerifier hv = HttpsURLConnection.getDefaultHostnameVerifier();
+                    HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+                        public boolean verify(String hostname, SSLSession session) {
+                            return hv.verify(trustedHostname, session);
+                        }
+                    });
                     requestQueue = Volley.newRequestQueue(ctx.getApplicationContext(),
-                        new OkHttp3Stack(ClientUtils.newCustomSocketFactory(trustedHostname)));
+                        new OkHttp3Stack(true));
                 }
             }
         }
@@ -571,9 +581,9 @@ public final class ParaClient {
             return;
         }
         if (StringUtils.isBlank(obj.getId()) || StringUtils.isBlank(obj.getType())) {
-            invokePost(obj.getType(), obj, null, callback, error);
+            invokePost(ClientUtils.urlEncode(obj.getType()), obj, null, callback, error);
         } else {
-            invokePut(obj.getType().concat("/").concat(obj.getId()), obj, null, callback, error);
+            invokePut(obj.getObjectURI(), obj, null, callback, error);
         }
     }
 
@@ -590,9 +600,9 @@ public final class ParaClient {
             return null;
         }
         if (StringUtils.isBlank(obj.getId()) || StringUtils.isBlank(obj.getType())) {
-            return invokeSyncPost(obj.getType(), obj, null);
+            return invokeSyncPost(ClientUtils.urlEncode(obj.getType()), obj, null);
         } else {
-            return invokeSyncPut(obj.getType().concat("/").concat(obj.getId()), obj, null);
+            return invokeSyncPut(obj.getObjectURI(), obj, null);
         }
     }
 
@@ -610,8 +620,8 @@ public final class ParaClient {
             fail(callback, null);
             return;
         }
-        invokeGet(type.getSimpleName().toLowerCase().concat("/").concat(id),
-                null, type, callback, error);
+        invokeGet(ClientUtils.urlEncode(type.getSimpleName().toLowerCase()).concat("/").
+                        concat(ClientUtils.urlEncode(id)),null, type, callback, error);
     }
 
     /**
@@ -625,7 +635,8 @@ public final class ParaClient {
         if (type == null || StringUtils.isBlank(id)) {
             return null;
         }
-        return invokeSyncGet(type.getSimpleName().toLowerCase().concat("/").concat(id), null, type);
+        return invokeSyncGet(ClientUtils.urlEncode(type.getSimpleName().toLowerCase()).concat("/").
+                concat(ClientUtils.urlEncode(id)), null, type);
     }
 
     /**
@@ -640,7 +651,7 @@ public final class ParaClient {
             fail(callback, null);
             return;
         }
-        invokeGet("_id/".concat(id), null, Sysprop.class, callback, error);
+        invokeGet("_id/".concat(ClientUtils.urlEncode(id)), null, Sysprop.class, callback, error);
     }
 
     /**
@@ -653,7 +664,7 @@ public final class ParaClient {
         if (StringUtils.isBlank(id)) {
             return null;
         }
-        return (P) invokeSyncGet("_id/".concat(id), null, Sysprop.class);
+        return (P) invokeSyncGet("_id/".concat(ClientUtils.urlEncode(id)), null, Sysprop.class);
     }
 
     /**
@@ -855,7 +866,7 @@ public final class ParaClient {
             fail(callback, Collections.emptyList());
             return;
         }
-        invokeGet(type, pagerToParams(pager), Map.class, new Listener<Map<String, Object>>() {
+        invokeGet(ClientUtils.urlEncode(type), pagerToParams(pager), Map.class, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
                 callback.onResponse(getItems(res, pager));
             }
@@ -874,7 +885,7 @@ public final class ParaClient {
         if (StringUtils.isBlank(type)) {
             return Collections.emptyList();
         }
-        return getItems(invokeSyncGet(type, pagerToParams(pager), Map.class), pager);
+        return getItems(invokeSyncGet(ClientUtils.urlEncode(type), pagerToParams(pager), Map.class), pager);
     }
 
     /////////////////////////////////////////////
@@ -1536,7 +1547,8 @@ public final class ParaClient {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("count", "true");
         final Pager pager = new Pager();
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         invokeGet(url, params, Map.class, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> map) {
                 getItems(map, pager);
@@ -1558,7 +1570,8 @@ public final class ParaClient {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("count", "true");
         Pager pager = new Pager();
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         getItems(invokeSyncGet(url, params, Map.class), pager);
         return pager.getCount();
     }
@@ -1579,7 +1592,8 @@ public final class ParaClient {
             fail(callback, Collections.emptyList());
             return;
         }
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         invokeGet(url, pagerToParams(pager), Map.class, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
                 callback.onResponse(getItems(res, pager));
@@ -1600,7 +1614,8 @@ public final class ParaClient {
         if (obj == null || obj.getId() == null || type2 == null) {
             return Collections.emptyList();
         }
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         return getItems(invokeSyncGet(url, pagerToParams(pager), Map.class), pager);
     }
 
@@ -1625,7 +1640,8 @@ public final class ParaClient {
         params.put("field", field);
         params.put("q", (query == null) ? "*" : query);
         params.putAll(pagerToParams(pager));
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         invokeGet(url, params, Map.class, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
                 callback.onResponse(getItems(res, pager));
@@ -1653,7 +1669,8 @@ public final class ParaClient {
         params.put("field", field);
         params.put("q", (query == null) ? "*" : query);
         params.putAll(pagerToParams(pager));
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         return getItems(invokeSyncGet(url, params, Map.class), pager);
     }
 
@@ -1671,7 +1688,8 @@ public final class ParaClient {
             fail(callback, false);
             return;
         }
-        String url = ClientUtils.formatMessage("{0}/links/{1}/{2}", obj.getObjectURI(), type2, id2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}/{2}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2), ClientUtils.urlEncode(id2));
         invokeGet(url, null, String.class, new Listener<String>() {
             public void onResponse(String res) {
                 callback.onResponse(res == null ? false : Boolean.parseBoolean(res));
@@ -1690,7 +1708,8 @@ public final class ParaClient {
         if (obj == null || obj.getId() == null || type2 == null || id2 == null) {
             return false;
         }
-        String url = ClientUtils.formatMessage("{0}/links/{1}/{2}", obj.getObjectURI(), type2, id2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}/{2}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2), ClientUtils.urlEncode(id2));
         return Boolean.parseBoolean(invokeSyncGet(url, null, String.class));
     }
 
@@ -1738,7 +1757,8 @@ public final class ParaClient {
             fail(callback, null);
             return;
         }
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), id2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(id2));
         invokePost(url, null, String.class, callback, error);
     }
 
@@ -1754,7 +1774,8 @@ public final class ParaClient {
         if (obj == null || obj.getId() == null || id2 == null) {
             return null;
         }
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), id2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(id2));
         return invokeSyncPost(url, null, String.class);
     }
 
@@ -1765,6 +1786,7 @@ public final class ParaClient {
      * @param obj the object to execute this method on
      * @param id2 the other id
      * @param error ErrorListener called on error
+     * @param callback callback
      */
     public void unlink(ParaObject obj, String type2, String id2, Listener<Map> callback,
                        ErrorListener... error) {
@@ -1772,7 +1794,8 @@ public final class ParaClient {
             fail(callback, null);
             return;
         }
-        String url = ClientUtils.formatMessage("{0}/links/{1}/{2}", obj.getObjectURI(), type2, id2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}/{2}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2), ClientUtils.urlEncode(id2));
         invokeDelete(url, null, Map.class, callback, error);
     }
 
@@ -1787,7 +1810,8 @@ public final class ParaClient {
         if (obj == null || obj.getId() == null || type2 == null || id2 == null) {
             return;
         }
-        String url = ClientUtils.formatMessage("{0}/links/{1}/{2}", obj.getObjectURI(), type2, id2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}/{2}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2), ClientUtils.urlEncode(id2));
         invokeSyncDelete(url, null, Map.class);
     }
 
@@ -1839,7 +1863,8 @@ public final class ParaClient {
         params.put("count", "true");
         params.put("childrenonly", "true");
         final Pager pager = new Pager();
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         invokeGet(url, params, Map.class, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
                 getItems(res, pager);
@@ -1862,7 +1887,8 @@ public final class ParaClient {
         params.put("count", "true");
         params.put("childrenonly", "true");
         Pager pager = new Pager();
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         getItems(invokeSyncGet(url, params, Map.class), pager);
         return pager.getCount();
     }
@@ -1885,7 +1911,8 @@ public final class ParaClient {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("childrenonly", "true");
         params.putAll(pagerToParams(pager));
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         invokeGet(url, params, Map.class, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
                 callback.onResponse(getItems(res, pager));
@@ -1908,7 +1935,8 @@ public final class ParaClient {
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("childrenonly", "true");
         params.putAll(pagerToParams(pager));
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         return getItems(invokeSyncGet(url, params, Map.class), pager);
     }
 
@@ -1934,7 +1962,8 @@ public final class ParaClient {
         params.put("field", field);
         params.put("term", term);
         params.putAll(pagerToParams(pager));
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         invokeGet(url, params, Map.class, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
                 callback.onResponse(getItems(res, pager));
@@ -1962,7 +1991,8 @@ public final class ParaClient {
         params.put("field", field);
         params.put("term", term);
         params.putAll(pagerToParams(pager));
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         return getItems(invokeSyncGet(url, params, Map.class), pager);
     }
 
@@ -1987,7 +2017,8 @@ public final class ParaClient {
         params.put("childrenonly", "true");
         params.put("q", (query == null) ? "*" : query);
         params.putAll(pagerToParams(pager));
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         invokeGet(url, params, Map.class, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
                 callback.onResponse(getItems(res, pager));
@@ -2014,7 +2045,8 @@ public final class ParaClient {
         params.put("childrenonly", "true");
         params.put("q", (query == null) ? "*" : query);
         params.putAll(pagerToParams(pager));
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         return getItems(invokeSyncGet(url, params, Map.class), pager);
     }
 
@@ -2033,7 +2065,8 @@ public final class ParaClient {
         }
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("childrenonly", "true");
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         invokeDelete(url, params, Map.class, callback, error);
     }
 
@@ -2048,7 +2081,8 @@ public final class ParaClient {
         }
         Map<String, Object> params = new HashMap<String, Object>();
         params.put("childrenonly", "true");
-        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(), type2);
+        String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
+                ClientUtils.urlEncode(type2));
         invokeSyncDelete(url, params, Map.class);
     }
 
@@ -2388,7 +2422,7 @@ public final class ParaClient {
             fail(callback, false);
         }
         String val = isUpvote ? "_voteup" : "_votedown";
-        invokePatch(obj.getType().concat("/").concat(obj.getId()),
+        invokePatch(obj.getObjectURI(),
                 Collections.singletonMap(val, voterid), String.class, new Listener<String>() {
                     public void onResponse(String res) {
                         callback.onResponse(res == null ? false : Boolean.parseBoolean(res));
@@ -2401,7 +2435,7 @@ public final class ParaClient {
             return false;
         }
         String val = isUpvote ? "_voteup" : "_votedown";
-        return invokeSyncPatch(obj.getType().concat("/").concat(obj.getId()),
+        return invokeSyncPatch(obj.getObjectURI(),
                 Collections.singletonMap(val, voterid), Boolean.class);
     }
 
@@ -2409,7 +2443,6 @@ public final class ParaClient {
      * Rebuilds the entire search index.
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
-     * @return a response object with properties "tookMillis" and "reindexed"
      */
     public void rebuildIndex(Listener<Map<String, String>> callback, ErrorListener... error) {
         invokePost("_reindex", null, Map.class, callback, error);
@@ -2428,7 +2461,6 @@ public final class ParaClient {
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      * @param destinationIndex an existing index as destination
-     * @return a response object with properties "tookMillis" and "reindexed"
      */
     public void rebuildIndex(String destinationIndex, Listener<Map<String, String>> callback,
                              ErrorListener... error) {
@@ -2480,7 +2512,7 @@ public final class ParaClient {
      */
     public void validationConstraints(String type, Listener<Map<String, Map<String,
             Map<String, Map<String, ?>>>>> callback, ErrorListener... error) {
-        invokeGet(ClientUtils.formatMessage("_constraints/{0}", type),
+        invokeGet(ClientUtils.formatMessage("_constraints/{0}", ClientUtils.urlEncode(type)),
                 null, Map.class, callback, error);
     }
 
@@ -2490,7 +2522,8 @@ public final class ParaClient {
      * @return a map containing all validation constraints for this type.
      */
     public Map<String, Map<String, Map<String, Map<String, ?>>>> validationConstraintsSync(String type) {
-        return invokeSyncGet(ClientUtils.formatMessage("_constraints/{0}", type), null, Map.class);
+        return invokeSyncGet(ClientUtils.formatMessage("_constraints/{0}",
+                ClientUtils.urlEncode(type)), null, Map.class);
     }
 
     /**
@@ -2508,7 +2541,8 @@ public final class ParaClient {
             fail(callback, Collections.emptyMap());
             return;
         }
-        invokePut(ClientUtils.formatMessage("_constraints/{0}/{1}/{2}", type, field, c.getName()),
+        invokePut(ClientUtils.formatMessage("_constraints/{0}/{1}/{2}",
+                ClientUtils.urlEncode(type), field, c.getName()),
                 c.getPayload(), Map.class, callback, error);
     }
 
@@ -2524,8 +2558,8 @@ public final class ParaClient {
         if (StringUtils.isBlank(type) || StringUtils.isBlank(field) || c == null) {
             return Collections.emptyMap();
         }
-        return invokeSyncPut(ClientUtils.formatMessage("_constraints/{0}/{1}/{2}", type,
-                field, c.getName()), c.getPayload(), Map.class);
+        return invokeSyncPut(ClientUtils.formatMessage("_constraints/{0}/{1}/{2}",
+                ClientUtils.urlEncode(type), field, c.getName()), c.getPayload(), Map.class);
     }
 
     /**
@@ -2544,8 +2578,9 @@ public final class ParaClient {
             fail(callback, Collections.emptyMap());
             return;
         }
-        invokeDelete(ClientUtils.formatMessage("_constraints/{0}/{1}/{2}", type,
-                field, constraintName), null, Map.class, callback, error);
+        invokeDelete(ClientUtils.formatMessage("_constraints/{0}/{1}/{2}",
+                ClientUtils.urlEncode(type), field, constraintName),
+                null, Map.class, callback, error);
     }
 
     /**
@@ -2561,8 +2596,8 @@ public final class ParaClient {
                 StringUtils.isBlank(constraintName)) {
             return Collections.emptyMap();
         }
-        return invokeSyncDelete(ClientUtils.formatMessage("_constraints/{0}/{1}/{2}", type,
-                field, constraintName), null, Map.class);
+        return invokeSyncDelete(ClientUtils.formatMessage("_constraints/{0}/{1}/{2}",
+                ClientUtils.urlEncode(type), field, constraintName), null, Map.class);
     }
 
     /////////////////////////////////////////////
@@ -2591,11 +2626,13 @@ public final class ParaClient {
      * Returns only the permissions for a given subject (user) of the current app.
      * @param subjectid the subject id (user id)
      * @param callback Listener called with response object
+     * @param error error handler
      */
     public void resourcePermissions(String subjectid,
                                     Listener<Map<String, Map<String, List<String>>>> callback,
                                     ErrorListener... error) {
-        invokeGet(ClientUtils.formatMessage("_permissions/{0}", subjectid),
+        invokeGet(ClientUtils.formatMessage("_permissions/{0}",
+                ClientUtils.urlEncode(subjectid)),
                 null, Map.class, callback, error);
     }
 
@@ -2605,7 +2642,8 @@ public final class ParaClient {
      * @return a map of subject ids to resource names to a list of allowed methods
      */
     public Map<String, Map<String, List<String>>> resourcePermissionsSync(String subjectid) {
-        return invokeSyncGet(ClientUtils.formatMessage("_permissions/{0}", subjectid), null, Map.class);
+        return invokeSyncGet(ClientUtils.formatMessage("_permissions/{0}",
+                ClientUtils.urlEncode(subjectid)), null, Map.class);
     }
 
     /**
@@ -2646,8 +2684,8 @@ public final class ParaClient {
             permission[permission.length - 1] = ClientUtils.GUEST;
         }
         resourcePath = ClientUtils.urlEncode(resourcePath);
-        invokePut(ClientUtils.formatMessage("_permissions/{0}/{1}", subjectid, resourcePath),
-                permission, Map.class, callback, error);
+        invokePut(ClientUtils.formatMessage("_permissions/{0}/{1}",
+                ClientUtils.urlEncode(subjectid), resourcePath), permission, Map.class, callback, error);
     }
 
     /**
@@ -2682,8 +2720,8 @@ public final class ParaClient {
             permission[permission.length - 1] = ClientUtils.GUEST;
         }
         resourcePath = ClientUtils.urlEncode(resourcePath);
-        return invokeSyncPut(ClientUtils.formatMessage("_permissions/{0}/{1}", subjectid, resourcePath),
-                permission, Map.class);
+        return invokeSyncPut(ClientUtils.formatMessage("_permissions/{0}/{1}",
+                ClientUtils.urlEncode(subjectid), resourcePath), permission, Map.class);
     }
 
     /**
@@ -2702,7 +2740,8 @@ public final class ParaClient {
             return;
         }
         resourcePath = ClientUtils.urlEncode(resourcePath);
-        invokeDelete(ClientUtils.formatMessage("_permissions/{0}/{1}", subjectid, resourcePath),
+        invokeDelete(ClientUtils.formatMessage("_permissions/{0}/{1}",
+                ClientUtils.urlEncode(subjectid), resourcePath),
             null, Map.class, callback, error);
     }
 
@@ -2719,8 +2758,8 @@ public final class ParaClient {
             return Collections.emptyMap();
         }
         resourcePath = ClientUtils.urlEncode(resourcePath);
-        return invokeSyncDelete(ClientUtils.formatMessage("_permissions/{0}/{1}", subjectid, resourcePath),
-                null, Map.class);
+        return invokeSyncDelete(ClientUtils.formatMessage("_permissions/{0}/{1}",
+                ClientUtils.urlEncode(subjectid), resourcePath), null, Map.class);
     }
 
     /**
@@ -2736,8 +2775,8 @@ public final class ParaClient {
             fail(callback, Collections.emptyMap());
             return;
         }
-        invokeDelete(ClientUtils.formatMessage("_permissions/{0}", subjectid),
-                null, Map.class, callback, error);
+        invokeDelete(ClientUtils.formatMessage("_permissions/{0}",
+                ClientUtils.urlEncode(subjectid)), null, Map.class, callback, error);
     }
 
     /**
@@ -2749,8 +2788,8 @@ public final class ParaClient {
         if (StringUtils.isBlank(subjectid)) {
             return Collections.emptyMap();
         }
-        return invokeSyncDelete(ClientUtils.formatMessage("_permissions/{0}", subjectid),
-                null, Map.class);
+        return invokeSyncDelete(ClientUtils.formatMessage("_permissions/{0}",
+                ClientUtils.urlEncode(subjectid)), null, Map.class);
     }
 
     /**
@@ -2770,7 +2809,7 @@ public final class ParaClient {
         }
         resourcePath = ClientUtils.urlEncode(resourcePath);
         String url = ClientUtils.formatMessage("_permissions/{0}/{1}/{2}",
-                subjectid, resourcePath, httpMethod);
+                ClientUtils.urlEncode(subjectid), resourcePath, httpMethod);
         invokeGet(url, null, String.class, new Listener<String>() {
             public void onResponse(String res) {
                 callback.onResponse(res == null ? false : Boolean.parseBoolean(res));
@@ -2791,7 +2830,7 @@ public final class ParaClient {
             return false;
         }
         String url = ClientUtils.formatMessage("_permissions/{0}/{1}/{2}",
-                subjectid, resourcePath, httpMethod);
+                ClientUtils.urlEncode(subjectid), resourcePath, httpMethod);
         return Boolean.parseBoolean(invokeSyncGet(url, null, String.class));
     }
 
@@ -2935,6 +2974,7 @@ public final class ParaClient {
      * use that as the provider access token.</b>
      * @param provider identity provider, e.g. 'facebook', 'google'...
      * @param providerToken access token from a provider like Facebook, Google, Twitter
+     * @param rememberJWT stores the JWT token in the ParaClient instance
      * @param callback Listener called with response object
      * @param error ErrorListener called on error
      */
@@ -2996,6 +3036,7 @@ public final class ParaClient {
      * use that as the provider access token.</b>
      * @param provider identity provider, e.g. 'facebook', 'google'...
      * @param providerToken access token from a provider like Facebook, Google, Twitter
+     * @param rememberJWT stores the JWT in memory
      * @return a User object or null if something failed
      */
     public Sysprop signInSync(String provider, String providerToken, boolean rememberJWT) {

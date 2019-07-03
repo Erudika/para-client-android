@@ -18,7 +18,6 @@
 -dontpreverify
 -repackageclasses ''
 -allowaccessmodification
--optimizations !code/simplification/arithmetic
 -keepattributes *Annotation*
 -dontwarn android.support.**
 
