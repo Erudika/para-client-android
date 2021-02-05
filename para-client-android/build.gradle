@@ -3,21 +3,21 @@ apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
 
 def gitURL = 'git@github.com:Erudika/para-client-android.git'
-def paraVer = '1.32.0'
+def paraVer = '1.33.0'
 group = "com.erudika"
 version = paraVer
 
 android {
-    compileSdkVersion 26
-    buildToolsVersion "28.0.3"
+    compileSdkVersion 30
+//    buildToolsVersion "28.0.3"
     compileOptions {
         encoding "UTF-8"
         sourceCompatibility JavaVersion.VERSION_1_7
         targetCompatibility JavaVersion.VERSION_1_7
     }
     defaultConfig {
-        minSdkVersion 16
-        targetSdkVersion 26
+        //minSdkVersion 16
+        //targetSdkVersion 26
         versionCode 1
         versionName paraVer
         testInstrumentationRunner 'android.support.test.runner.AndroidJUnitRunner'
@@ -53,8 +53,8 @@ android {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation 'com.android.support:appcompat-v7:26.1.0'
-    implementation 'com.android.support:support-v4:26.1.0'
+    //implementation 'com.android.support:appcompat-v7:26.1.0'
+    //implementation 'com.android.support:support-v4:26.1.0'
     androidTestImplementation 'junit:junit:4.12'
     androidTestImplementation 'org.mockito:mockito-core:2.28.2'
     androidTestImplementation 'com.android.support:support-annotations:24.2.1'
@@ -122,26 +122,26 @@ task sourcesJar(type: Jar) {
     classifier = 'sources'
 }
 
-task javadoc(type: Javadoc) {
-    failOnError = false
-    source = android.sourceSets.main.java.srcDirs
-    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
-}
+//task javadoc(type: Javadoc) {
+//    failOnError = false
+//    source = android.sourceSets.main.java.srcDirs
+//    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+//}
 
-afterEvaluate {
-    javadoc.classpath += files(android.libraryVariants.collect { variant ->
-        variant.javaCompileProvider.get().classpath.files
-    })
-}
-
-
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-}
+//afterEvaluate {
+//    javadoc.classpath += files(android.libraryVariants.collect { variant ->
+//        variant.javaCompileProvider.get().classpath.files
+//    })
+//}
+//
+//
+//task javadocJar(type: Jar, dependsOn: javadoc) {
+//    classifier = 'javadoc'
+//    from javadoc.destinationDir
+//}
 
 artifacts {
-    archives javadocJar
+//    archives javadocJar
     archives sourcesJar
 }
 
@@ -168,7 +168,7 @@ allprojects {
             publish = true
             version {
                 name = paraVer
-                released = new Date()
+                //released = new Date()
                 vcsTag = paraVer
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2019 Erudika. https://erudika.com
+ * Copyright 2013-2021 Erudika. https://erudika.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -2315,6 +2315,23 @@ public final class ParaClient {
     public Map<String, String> typesSync() {
         return invokeSyncGet("_types", null, Map.class);
     }
+
+    /**
+     * Returns the number of objects for each existing type in this App.
+     * @param callback Listener called with response object
+     * @param error ErrorListener called on error
+     */
+    public void typesCount(Listener<Map<String, String>> callback, ErrorListener... error) {
+        invokeGet("_types", Collections.singletonMap("count", "true"), Map.class, callback, error);
+    }
+
+    /**
+	 * Returns the number of objects for each existing type in this App.
+	 * @return a map of singular object type to object count.
+	 */
+	public Map<String, Number> typesCountSync() {
+		return invokeGet("_types",  Collections.singletonMap("count", "true"));
+	}
 
     /**
      * Returns a User or an
