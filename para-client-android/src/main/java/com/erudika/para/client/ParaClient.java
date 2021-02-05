@@ -2330,7 +2330,7 @@ public final class ParaClient {
 	 * @return a map of singular object type to object count.
 	 */
 	public Map<String, Number> typesCountSync() {
-		return invokeGet("_types",  Collections.singletonMap("count", "true"));
+		return invokeSyncGet("_types", Collections.singletonMap("count", "true"), Map.class);
 	}
 
     /**
