@@ -510,6 +510,9 @@ public final class ParaClient {
                 if (p.getSortby() != null) {
                     map.put("sort", Collections.singletonList(p.getSortby()));
                 }
+                if (!p.getSelect().isEmpty()) {
+                    map.put("select", Collections.singletonList(String.join(",", p.getSelect())));
+                }
             }
         }
         return map;
