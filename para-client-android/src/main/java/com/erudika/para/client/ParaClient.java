@@ -50,7 +50,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLSession;
 
 /**
  * The Java REST client for communicating with a Para API server.
@@ -102,17 +101,11 @@ public final class ParaClient {
                 requestQueue = new RequestQueue(new NoCache(), new BasicNetwork(new OkHttp3Stack()));
             } else {
                 if (StringUtils.isBlank(trustedHostname)) {
-                    requestQueue = Volley.newRequestQueue(ctx.getApplicationContext(),
-                            new OkHttp3Stack());
+                    requestQueue = Volley.newRequestQueue(ctx.getApplicationContext(), new OkHttp3Stack());
                 } else {
-                    final HostnameVerifier hv = HttpsURLConnection.getDefaultHostnameVerifier();
-                    HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
-                        public boolean verify(String hostname, SSLSession session) {
-                            return hv.verify(trustedHostname, session);
-                        }
-                    });
-                    requestQueue = Volley.newRequestQueue(ctx.getApplicationContext(),
-                        new OkHttp3Stack(true));
+                    HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> 
+                        HttpsURLConnection.getDefaultHostnameVerifier().verify(trustedHostname, session));
+                    requestQueue = Volley.newRequestQueue(ctx.getApplicationContext(), new OkHttp3Stack(true));
                 }
             }
         }
@@ -278,6 +271,7 @@ public final class ParaClient {
             return new ErrorListener() {
                 public void onErrorResponse(VolleyError err) {
                     byte[] data = err.networkResponse != null ? err.networkResponse.data : null;
+                    int status = err.networkResponse != null ? err.networkResponse.statusCode : 400;
                     String msg = err.getMessage();
                     String errorType = err.getClass().getSimpleName();
                     Map<String, Object> error = data != null ? readEntity(Map.class, data) : null;
@@ -285,11 +279,15 @@ public final class ParaClient {
                         msg = error.containsKey("message") ? (String) error.get("message") : msg;
                         logger.error("{}:" + msg + " - {}", errorType, error.get("code"));
                     } else {
-                        logger.error("{} - {} {}", err.networkResponse.statusCode, msg, errorType);
+                        logger.error("{} - {} {}", status, msg, errorType);
                     }
                 }
             };
         }
+    }
+
+    private List<String> getQueryParameters(String param) {
+        return (param != null) ? List.of(param) : null;
     }
 
     /**
@@ -329,7 +327,7 @@ public final class ParaClient {
 
     protected <T> T invokeSignedSyncRequest(int method, String resourcePath,
                                           Map<String, String> headers,
-                                          Map<String, Object> params,
+                                          Map<String, List<String>> params,
                                           Object entity, Class<T> returnType) {
         RequestFuture<T> future = RequestFuture.newFuture();
         ErrorListener error = onError();
@@ -347,7 +345,7 @@ public final class ParaClient {
 
     protected <T> void invokeSignedRequest(int method, String resourcePath,
                                           Map<String, String> headers,
-                                          Map<String, Object> params,
+                                          Map<String, List<String>> params,
                                           Object entity, Class<T> returnType,
                                           Listener<?> success, ErrorListener... error) {
         boolean refreshJWT = !(method == GET && JWT_PATH.equals(resourcePath));
@@ -364,7 +362,7 @@ public final class ParaClient {
      * @param success callback
      * @param error callback
      */
-    public void invokeGet(String resourcePath, Map<String, Object> params, Class<?> returnType,
+    public void invokeGet(String resourcePath, Map<String, List<String>> params, Class<?> returnType,
                            Listener<?> success, ErrorListener... error) {
         getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(!JWT_PATH.equals(resourcePath)), GET,
                 getEndpoint(), getFullPath(resourcePath), null, params, null, returnType,
@@ -424,7 +422,7 @@ public final class ParaClient {
      * @param success callback
      * @param error callback
      */
-    public void invokeDelete(String resourcePath, Map<String, Object> params, Class<?> returnType,
+    public void invokeDelete(String resourcePath, Map<String, List<String>> params, Class<?> returnType,
                               Listener<?> success, ErrorListener... error) {
         getRequestQueue().add(signer.invokeSignedRequest(accessKey, key(false), DELETE,
                 getEndpoint(), getFullPath(resourcePath), null, params, null, returnType,
@@ -439,7 +437,7 @@ public final class ParaClient {
      * @param <T> type
      * @return response
      */
-    public <T> T invokeSyncGet(String resourcePath, Map<String, Object> params, Class<T> returnType) {
+    public <T> T invokeSyncGet(String resourcePath, Map<String, List<String>> params, Class<T> returnType) {
         return invokeSignedSyncRequest(GET, resourcePath, null, params, null, returnType);
     }
 
@@ -487,7 +485,7 @@ public final class ParaClient {
      * @param <T> type
      * @return response
      */
-    public <T> T invokeSyncDelete(String resourcePath, Map<String, Object> params, Class<T> returnType) {
+    public <T> T invokeSyncDelete(String resourcePath, Map<String, List<String>> params, Class<T> returnType) {
         return invokeSignedSyncRequest(DELETE, resourcePath, null, params, null, returnType);
     }
 
@@ -496,8 +494,8 @@ public final class ParaClient {
      * @param pager a Pager
      * @return list of query parameters
      */
-    public Map<String, Object> pagerToParams(Pager... pager) {
-        Map<String, Object> map = new HashMap<String, Object>();
+    public Map<String, List<String>> pagerToParams(Pager... pager) {
+        Map<String, List<String>> map = new HashMap<String, List<String>>();
         if (pager != null && pager.length > 0) {
             Pager p = pager[0];
             if (p != null) {
@@ -769,7 +767,7 @@ public final class ParaClient {
             fail(callback, Collections.emptyList());
             return;
         }
-        Map<String, Object> ids = new HashMap<String, Object>();
+        Map<String, List<String>> ids = new HashMap<String, List<String>>();
         ids.put("ids", keys);
         invokeGet("_batch", ids, List.class, new Listener<List<Map<String, Object>>>() {
             public void onResponse(List<Map<String, Object>> res) {
@@ -788,7 +786,7 @@ public final class ParaClient {
         if (keys == null || keys.isEmpty()) {
             return Collections.emptyList();
         }
-        Map<String, Object> ids = new HashMap<String, Object>();
+        Map<String, List<String>> ids = new HashMap<String, List<String>>();
         ids.put("ids", keys);
         return getItemsFromList(invokeSyncGet("_batch", ids, List.class));
     }
@@ -837,7 +835,7 @@ public final class ParaClient {
             fail(callback, null);
             return;
         }
-        Map<String, Object> ids = new HashMap<String, Object>();
+        Map<String, List<String>> ids = new HashMap<String, List<String>>();
         ids.put("ids", keys);
         invokeDelete("_batch", ids, Map.class, callback, error);
     }
@@ -850,7 +848,7 @@ public final class ParaClient {
         if (keys == null || keys.isEmpty()) {
             return;
         }
-        Map<String, Object> ids = new HashMap<String, Object>();
+        Map<String, List<String>> ids = new HashMap<String, List<String>>();
         ids.put("ids", keys);
         invokeSyncDelete("_batch", ids, null);
     }
@@ -903,8 +901,8 @@ public final class ParaClient {
      */
     public void findById(String id, final Listener<ParaObject> callback,
                          ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("id", id);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("id", getQueryParameters(id));
         find("id", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
                 List<ParaObject> list = getItems(res);
@@ -921,8 +919,8 @@ public final class ParaClient {
      * @return the object if found or null
      */
     public <P extends ParaObject> P findByIdSync(String id) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("id", id);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("id", getQueryParameters(id));
         List<P> list = getItems(findSync("id", params));
         return list.isEmpty() ? null : list.get(0);
     }
@@ -935,7 +933,7 @@ public final class ParaClient {
      */
     public void findByIds(List<String> ids, final Listener<List<ParaObject>> callback,
                           ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
         params.put("ids", ids);
         find("ids", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -951,7 +949,7 @@ public final class ParaClient {
      * @return a list of object found
      */
     public <P extends ParaObject> List<P> findByIdsSync(List<String> ids) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
         params.put("ids", ids);
         return getItems(findSync("ids", params));
     }
@@ -970,11 +968,11 @@ public final class ParaClient {
     public void findNearby(String type, String query, int radius, double lat, double lng,
                            final Pager pager, final Listener<List<ParaObject>> callback,
                            ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("latlng", lat + "," + lng);
-        params.put("radius", Integer.toString(radius));
-        params.put("q", query);
-        params.put("type", type);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("latlng", getQueryParameters(lat + "," + lng));
+        params.put("radius", getQueryParameters(Integer.toString(radius)));
+        params.put("q", getQueryParameters(query));
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         find("nearby", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -996,11 +994,11 @@ public final class ParaClient {
      */
     public <P extends ParaObject> List<P> findNearbySync(String type, String query, int radius,
                                                      double lat, double lng, Pager... pager) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("latlng", lat + "," + lng);
-        params.put("radius", Integer.toString(radius));
-        params.put("q", query);
-        params.put("type", type);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("latlng", getQueryParameters(lat + "," + lng));
+        params.put("radius", getQueryParameters(Integer.toString(radius)));
+        params.put("q", getQueryParameters(query));
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         return getItems(findSync("nearby", params), pager);
     }
@@ -1017,10 +1015,10 @@ public final class ParaClient {
     public void findPrefix(String type, String field, String prefix, final Pager pager,
                            final Listener<List<ParaObject>> callback,
                            ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("field", field);
-        params.put("prefix", prefix);
-        params.put("type", type);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("field", getQueryParameters(field));
+        params.put("prefix", getQueryParameters(prefix));
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         find("prefix", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -1040,10 +1038,10 @@ public final class ParaClient {
      */
     public <P extends ParaObject> List<P> findPrefixSync(String type, String field,
                                                      String prefix, Pager... pager) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("field", field);
-        params.put("prefix", prefix);
-        params.put("type", type);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("field", getQueryParameters(field));
+        params.put("prefix", getQueryParameters(prefix));
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         return getItems(findSync("prefix", params), pager);
     }
@@ -1059,9 +1057,9 @@ public final class ParaClient {
     public void findQuery(String type, String query, final Pager pager,
                           final Listener<List<ParaObject>> callback,
                           ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("q", query);
-        params.put("type", type);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("q", getQueryParameters(query));
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         find("", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -1079,9 +1077,9 @@ public final class ParaClient {
      * @return a list of objects found
      */
     public <P extends ParaObject> List<P> findQuerySync(String type, String query, Pager... pager) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("q", query);
-        params.put("type", type);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("q", getQueryParameters(query));
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         return getItems(findSync("", params), pager);
     }
@@ -1098,10 +1096,10 @@ public final class ParaClient {
     public void findNestedQuery(String type, String field, String query, final Pager pager,
                           final Listener<List<ParaObject>> callback,
                           ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("q", query);
-        params.put("field", field);
-        params.put("type", type);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("q", getQueryParameters(query));
+        params.put("field", getQueryParameters(field));
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         find("nested", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -1121,10 +1119,10 @@ public final class ParaClient {
      */
     public <P extends ParaObject> List<P> findNestedQuerySync(String type, String field,
                                                         String query, Pager... pager) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("q", query);
-        params.put("field", field);
-        params.put("type", type);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("q", getQueryParameters(query));
+        params.put("field", getQueryParameters(field));
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         return getItems(findSync("nested", params), pager);
     }
@@ -1143,11 +1141,11 @@ public final class ParaClient {
     public void findSimilar(String type, String filterKey, String[] fields, String liketext,
                             final Pager pager, final Listener<List<ParaObject>> callback,
                             ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
         params.put("fields", fields == null ? null : Arrays.asList(fields));
-        params.put("filterid", filterKey);
-        params.put("like", liketext);
-        params.put("type", type);
+        params.put("filterid", getQueryParameters(filterKey));
+        params.put("like", getQueryParameters(liketext));
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         find("similar", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -1169,11 +1167,11 @@ public final class ParaClient {
      */
     public <P extends ParaObject> List<P> findSimilarSync(String type, String filterKey, String[] fields,
                                                       String liketext, Pager... pager) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
         params.put("fields", fields == null ? null : Arrays.asList(fields));
-        params.put("filterid", filterKey);
-        params.put("like", liketext);
-        params.put("type", type);
+        params.put("filterid", getQueryParameters(filterKey));
+        params.put("like", getQueryParameters(liketext));
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         return getItems(findSync("similar", params), pager);
     }
@@ -1189,9 +1187,9 @@ public final class ParaClient {
     public void findTagged(String type, String[] tags, final Pager pager,
                            final Listener<List<ParaObject>> callback,
                            ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
         params.put("tags", tags == null ? null : Arrays.asList(tags));
-        params.put("type", type);
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         find("tagged", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -1209,9 +1207,9 @@ public final class ParaClient {
      * @return a list of objects found
      */
     public <P extends ParaObject> List<P> findTaggedSync(String type, String[] tags, Pager... pager) {
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
         params.put("tags", tags == null ? null : Arrays.asList(tags));
-        params.put("type", type);
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         return getItems(findSync("tagged", params), pager);
     }
@@ -1255,10 +1253,10 @@ public final class ParaClient {
     public void findTermInList(String type, String field, List<String> terms,
                                final Pager pager, final Listener<List<ParaObject>> callback,
                                ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("field", field);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("field", getQueryParameters(field));
         params.put("terms", terms);
-        params.put("type", type);
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         find("in", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -1278,10 +1276,10 @@ public final class ParaClient {
      */
     public <P extends ParaObject> List<P> findTermInListSync(String type, String field,
                                                              List<String> terms, Pager... pager) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("field", field);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("field", getQueryParameters(field));
         params.put("terms", terms);
-        params.put("type", type);
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         return getItems(findSync("in", params), pager);
     }
@@ -1302,8 +1300,8 @@ public final class ParaClient {
             fail(callback, Collections.emptyList());
             return;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("matchall", Boolean.toString(matchAll));
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("matchall", getQueryParameters(Boolean.toString(matchAll)));
         LinkedList<String> list = new LinkedList<String>();
         for (Map.Entry<String, ?> term : terms.entrySet()) {
             String key = term.getKey();
@@ -1315,7 +1313,7 @@ public final class ParaClient {
         if (!terms.isEmpty()) {
             params.put("terms", list);
         }
-        params.put("type", type);
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         find("terms", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -1338,8 +1336,8 @@ public final class ParaClient {
         if (terms == null) {
             return Collections.emptyList();
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("matchall", Boolean.toString(matchAll));
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("matchall", getQueryParameters(Boolean.toString(matchAll)));
         LinkedList<String> list = new LinkedList<String>();
         for (Map.Entry<String, ?> term : terms.entrySet()) {
             String key = term.getKey();
@@ -1351,7 +1349,7 @@ public final class ParaClient {
         if (!terms.isEmpty()) {
             params.put("terms", list);
         }
-        params.put("type", type);
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         return getItems(findSync("terms", params), pager);
     }
@@ -1368,10 +1366,10 @@ public final class ParaClient {
     public void findWildcard(String type, String field, String wildcard,
                              final Pager pager, final Listener<List<ParaObject>> callback,
                              ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("field", field);
-        params.put("q", wildcard);
-        params.put("type", type);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("field", getQueryParameters(field));
+        params.put("q", getQueryParameters(wildcard));
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         find("wildcard", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -1391,10 +1389,10 @@ public final class ParaClient {
      */
     public <P extends ParaObject> List<P> findWildcardSync(String type, String field,
                                                            String wildcard, Pager... pager) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("field", field);
-        params.put("q", wildcard);
-        params.put("type", type);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("field", getQueryParameters(field));
+        params.put("q", getQueryParameters(wildcard));
+        params.put("type", getQueryParameters(type));
         params.putAll(pagerToParams(pager));
         return getItems(findSync("wildcard", params), pager);
     }
@@ -1407,8 +1405,8 @@ public final class ParaClient {
      */
     public void getCount(String type, final Listener<Long> callback,
                          ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("type", type);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("type", getQueryParameters(type));
         final Pager pager = new Pager();
         find("count", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -1424,8 +1422,8 @@ public final class ParaClient {
      * @return the number of results found
      */
     public Long getCountSync(String type) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("type", type);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("type", getQueryParameters(type));
         Pager pager = new Pager();
         getItems(findSync("count", params), pager);
         return pager.getCount();
@@ -1444,7 +1442,7 @@ public final class ParaClient {
             fail(callback, 0L);
             return;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
         LinkedList<String> list = new LinkedList<String>();
         for (Map.Entry<String, ?> term : terms.entrySet()) {
             String key = term.getKey();
@@ -1456,8 +1454,8 @@ public final class ParaClient {
         if (!terms.isEmpty()) {
             params.put("terms", list);
         }
-        params.put("type", type);
-        params.put("count", "true");
+        params.put("type", getQueryParameters(type));
+        params.put("count", getQueryParameters("true"));
         final Pager pager = new Pager();
         find("terms", params, new Listener<Map<String, Object>>() {
             public void onResponse(Map<String, Object> res) {
@@ -1477,7 +1475,7 @@ public final class ParaClient {
         if (terms == null) {
             return 0L;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
         LinkedList<String> list = new LinkedList<String>();
         for (Map.Entry<String, ?> term : terms.entrySet()) {
             String key = term.getKey();
@@ -1489,22 +1487,23 @@ public final class ParaClient {
         if (!terms.isEmpty()) {
             params.put("terms", list);
         }
-        params.put("type", type);
-        params.put("count", "true");
+        params.put("type", getQueryParameters(type));
+        params.put("count", getQueryParameters("true"));
         Pager pager = new Pager();
         getItems(findSync("terms", params), pager);
         return pager.getCount();
     }
 
-    private void find(String queryType, Map<String, Object> params,
+    private void find(String queryType, Map<String, List<String>> params,
                       Listener<Map<String, Object>> callback, ErrorListener... error) {
         Map<String, Object> map = new HashMap<String, Object>();
         if (params != null && !params.isEmpty()) {
             String qType = StringUtils.isBlank(queryType) ? "/default" : "/".concat(queryType);
-            if (!params.containsKey("type") || StringUtils.isBlank((String) params.get("type"))) {
+            List<String> type = params.get("type");
+            if (type == null || type.isEmpty() || StringUtils.isBlank(type.get(0))) {
                 invokeGet("search".concat(qType), params, Map.class, callback, error);
             } else {
-                invokeGet(params.get("type") + "/search" + qType, params, Map.class, callback, error);
+                invokeGet(type.get(0) + "/search" + qType, params, Map.class, callback, error);
             }
             return;
         } else {
@@ -1514,14 +1513,15 @@ public final class ParaClient {
         callback.onResponse(map);
     }
 
-    private Map<String, Object> findSync(String queryType, Map<String, Object> params) {
+    private Map<String, Object> findSync(String queryType, Map<String, List<String>> params) {
         Map<String, Object> map = new HashMap<String, Object>();
         if (params != null && !params.isEmpty()) {
             String qType = StringUtils.isBlank(queryType) ? "/default" : "/".concat(queryType);
-            if (!params.containsKey("type") || StringUtils.isBlank((String) params.get("type"))) {
+            List<String> type = params.get("type");
+            if (type == null || type.isEmpty() || StringUtils.isBlank(type.get(0))) {
                 return invokeSyncGet("search".concat(qType), params, Map.class);
             } else {
-                return invokeSyncGet(params.get("type") + "/search" + qType, params, Map.class);
+                return invokeSyncGet(type.get(0) + "/search" + qType, params, Map.class);
             }
         } else {
             map.put("items", Collections.emptyList());
@@ -1547,8 +1547,8 @@ public final class ParaClient {
             fail(callback, 0L);
             return;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("count", "true");
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("count", getQueryParameters("true"));
         final Pager pager = new Pager();
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
@@ -1570,8 +1570,8 @@ public final class ParaClient {
         if (obj == null || obj.getId() == null || type2 == null) {
             return 0L;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("count", "true");
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("count", getQueryParameters("true"));
         Pager pager = new Pager();
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
@@ -1639,9 +1639,9 @@ public final class ParaClient {
             fail(callback, Collections.emptyList());
             return;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("field", field);
-        params.put("q", (query == null) ? "*" : query);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("field", getQueryParameters(field));
+        params.put("q", getQueryParameters((query == null) ? "*" : query));
         params.putAll(pagerToParams(pager));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
@@ -1668,9 +1668,9 @@ public final class ParaClient {
         if (obj == null || obj.getId() == null || type2 == null) {
             return Collections.emptyList();
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("field", field);
-        params.put("q", (query == null) ? "*" : query);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("field", getQueryParameters(field));
+        params.put("q", getQueryParameters((query == null) ? "*" : query));
         params.putAll(pagerToParams(pager));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
@@ -1862,9 +1862,9 @@ public final class ParaClient {
             fail(callback, 0L);
             return;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("count", "true");
-        params.put("childrenonly", "true");
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("count", getQueryParameters("true"));
+        params.put("childrenonly", getQueryParameters("true"));
         final Pager pager = new Pager();
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
@@ -1886,9 +1886,9 @@ public final class ParaClient {
         if (obj == null || obj.getId() == null || type2 == null) {
             return 0L;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("count", "true");
-        params.put("childrenonly", "true");
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("count", getQueryParameters("true"));
+        params.put("childrenonly", getQueryParameters("true"));
         Pager pager = new Pager();
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
@@ -1911,8 +1911,8 @@ public final class ParaClient {
             fail(callback, Collections.emptyList());
             return;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("childrenonly", "true");
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("childrenonly", getQueryParameters("true"));
         params.putAll(pagerToParams(pager));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
@@ -1935,8 +1935,8 @@ public final class ParaClient {
         if (obj == null || obj.getId() == null || type2 == null) {
             return Collections.emptyList();
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("childrenonly", "true");
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("childrenonly", getQueryParameters("true"));
         params.putAll(pagerToParams(pager));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
@@ -1960,10 +1960,10 @@ public final class ParaClient {
             fail(callback, Collections.emptyList());
             return;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("childrenonly", "true");
-        params.put("field", field);
-        params.put("term", term);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("childrenonly", getQueryParameters("true"));
+        params.put("field", getQueryParameters(field));
+        params.put("term", getQueryParameters(term));
         params.putAll(pagerToParams(pager));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
@@ -1989,10 +1989,10 @@ public final class ParaClient {
         if (obj == null || obj.getId() == null || type2 == null) {
             return Collections.emptyList();
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("childrenonly", "true");
-        params.put("field", field);
-        params.put("term", term);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("childrenonly", getQueryParameters("true"));
+        params.put("field", getQueryParameters(field));
+        params.put("term", getQueryParameters(term));
         params.putAll(pagerToParams(pager));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
@@ -2016,9 +2016,9 @@ public final class ParaClient {
             fail(callback, Collections.emptyList());
             return;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("childrenonly", "true");
-        params.put("q", (query == null) ? "*" : query);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("childrenonly", getQueryParameters("true"));
+        params.put("q", getQueryParameters((query == null) ? "*" : query));
         params.putAll(pagerToParams(pager));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
@@ -2044,9 +2044,9 @@ public final class ParaClient {
         if (obj == null || obj.getId() == null || type2 == null) {
             return Collections.emptyList();
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("childrenonly", "true");
-        params.put("q", (query == null) ? "*" : query);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("childrenonly", getQueryParameters("true"));
+        params.put("q", getQueryParameters((query == null) ? "*" : query));
         params.putAll(pagerToParams(pager));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
@@ -2066,8 +2066,8 @@ public final class ParaClient {
             fail(callback, null);
             return;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("childrenonly", "true");
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("childrenonly", getQueryParameters("true"));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
         invokeDelete(url, params, Map.class, callback, error);
@@ -2082,8 +2082,8 @@ public final class ParaClient {
         if (obj == null || obj.getId() == null || type2 == null) {
             return;
         }
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("childrenonly", "true");
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("childrenonly", getQueryParameters("true"));
         String url = ClientUtils.formatMessage("{0}/links/{1}", obj.getObjectURI(),
                 ClientUtils.urlEncode(type2));
         invokeSyncDelete(url, params, Map.class);
@@ -2146,9 +2146,9 @@ public final class ParaClient {
      */
     public void formatDate(String format, Locale loc, Listener<String> callback,
                            ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("format", format);
-        params.put("locale", loc == null ? null : loc.toString());
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("format", getQueryParameters(format));
+        params.put("locale", getQueryParameters(loc == null ? null : loc.toString()));
         invokeGet("utils/formatdate", params, String.class, callback, error);
     }
 
@@ -2159,9 +2159,9 @@ public final class ParaClient {
      * @return a formatted date
      */
     public String formatDateSync(String format, Locale loc) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("format", format);
-        params.put("locale", loc == null ? null : loc.toString());
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("format", getQueryParameters(format));
+        params.put("locale", getQueryParameters(loc == null ? null : loc.toString()));
         return invokeSyncGet("utils/formatdate", params, String.class);
     }
 
@@ -2174,9 +2174,9 @@ public final class ParaClient {
      */
     public void noSpaces(String str, String replaceWith, Listener<String> callback,
                          ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("string", str);
-        params.put("replacement", replaceWith);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("string", getQueryParameters(str));
+        params.put("replacement", getQueryParameters(replaceWith));
         invokeGet("utils/nospaces", params, String.class, callback, error);
     }
 
@@ -2187,9 +2187,9 @@ public final class ParaClient {
      * @return a string with dashes
      */
     public String noSpacesSync(String str, String replaceWith) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("string", str);
-        params.put("replacement", replaceWith);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("string", getQueryParameters(str));
+        params.put("replacement", getQueryParameters(replaceWith));
         return invokeSyncGet("utils/nospaces", params, String.class);
     }
 
@@ -2201,8 +2201,8 @@ public final class ParaClient {
      */
     public void stripAndTrim(String str, Listener<String> callback,
                              ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("string", str);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("string", getQueryParameters(str));
         invokeGet("utils/nosymbols", params, String.class, callback, error);
     }
 
@@ -2212,8 +2212,8 @@ public final class ParaClient {
      * @return a clean string
      */
     public String stripAndTrimSync(String str) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("string", str);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("string", getQueryParameters(str));
         return invokeSyncGet("utils/nosymbols", params, String.class);
     }
 
@@ -2225,8 +2225,8 @@ public final class ParaClient {
      */
     public void markdownToHtml(String markdownString, Listener<String> callback,
                                ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("md", markdownString);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("md", getQueryParameters(markdownString));
         invokeGet("utils/md2html", params, String.class, callback, error);
     }
 
@@ -2236,8 +2236,8 @@ public final class ParaClient {
      * @return HTML
      */
     public String markdownToHtmlSync(String markdownString) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("md", markdownString);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("md", getQueryParameters(markdownString));
         return invokeSyncGet("utils/md2html", params, String.class);
     }
 
@@ -2249,8 +2249,8 @@ public final class ParaClient {
      */
     public void approximately(long delta, Listener<String> callback,
                               ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("delta", Long.toString(delta));
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("delta", getQueryParameters(Long.toString(delta)));
         invokeGet("utils/timeago", params, String.class, callback, error);
     }
 
@@ -2260,8 +2260,8 @@ public final class ParaClient {
      * @return a string like "5m", "1h"
      */
     public String approximatelySync(long delta) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("delta", Long.toString(delta));
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("delta", getQueryParameters(Long.toString(delta)));
         return invokeSyncGet("utils/timeago", params, String.class);
     }
 
@@ -2325,7 +2325,9 @@ public final class ParaClient {
      * @param error ErrorListener called on error
      */
     public void typesCount(Listener<Map<String, String>> callback, ErrorListener... error) {
-        invokeGet("_types", Collections.singletonMap("count", "true"), Map.class, callback, error);
+        Map<String, List<String>> params = new HashMap<>();
+        params.put("count", getQueryParameters("true"));
+        invokeGet("_types", params, Map.class, callback, error);
     }
 
     /**
@@ -2333,7 +2335,9 @@ public final class ParaClient {
 	 * @return a map of singular object type to object count.
 	 */
 	public Map<String, Number> typesCountSync() {
-		return invokeSyncGet("_types", Collections.singletonMap("count", "true"), Map.class);
+        Map<String, List<String>> params = new HashMap<>();
+        params.put("count", getQueryParameters("true"));
+		return invokeSyncGet("_types", params, Map.class);
 	}
 
     /**
@@ -2484,8 +2488,8 @@ public final class ParaClient {
      */
     public void rebuildIndex(String destinationIndex, Listener<Map<String, String>> callback,
                              ErrorListener... error) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("destinationIndex", destinationIndex);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("destinationIndex", getQueryParameters(destinationIndex));
         invokeSignedRequest(POST, getFullPath("_reindex"),
                 null, params, new byte[0], Map.class, callback, error);
     }
@@ -2496,8 +2500,8 @@ public final class ParaClient {
      * @return a response object with properties "tookMillis" and "reindexed"
      */
     public Map<String, Object> rebuildIndexSync(String destinationIndex) {
-        Map<String, Object> params = new HashMap<String, Object>();
-        params.put("destinationIndex", destinationIndex);
+        Map<String, List<String>> params = new HashMap<String, List<String>>();
+        params.put("destinationIndex", getQueryParameters(destinationIndex));
         return invokeSignedSyncRequest(POST, getFullPath("_reindex"),
                 null, params, new byte[0], Map.class);
     }
@@ -2703,7 +2707,7 @@ public final class ParaClient {
             permission = Arrays.copyOf(permission, permission.length + 1);
             permission[permission.length - 1] = ClientUtils.GUEST;
         }
-        resourcePath = ClientUtils.urlEncode(resourcePath);
+        resourcePath = ClientUtils.base64encURL(resourcePath.getBytes());
         invokePut(ClientUtils.formatMessage("_permissions/{0}/{1}",
                 ClientUtils.urlEncode(subjectid), resourcePath), permission, Map.class, callback, error);
     }
@@ -2739,7 +2743,7 @@ public final class ParaClient {
             permission = Arrays.copyOf(permission, permission.length + 1);
             permission[permission.length - 1] = ClientUtils.GUEST;
         }
-        resourcePath = ClientUtils.urlEncode(resourcePath);
+        resourcePath = ClientUtils.base64encURL(resourcePath.getBytes());
         return invokeSyncPut(ClientUtils.formatMessage("_permissions/{0}/{1}",
                 ClientUtils.urlEncode(subjectid), resourcePath), permission, Map.class);
     }
@@ -2759,7 +2763,7 @@ public final class ParaClient {
             fail(callback, Collections.emptyMap());
             return;
         }
-        resourcePath = ClientUtils.urlEncode(resourcePath);
+        resourcePath = ClientUtils.base64encURL(resourcePath.getBytes());
         invokeDelete(ClientUtils.formatMessage("_permissions/{0}/{1}",
                 ClientUtils.urlEncode(subjectid), resourcePath),
             null, Map.class, callback, error);
@@ -2777,7 +2781,7 @@ public final class ParaClient {
         if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourcePath)) {
             return Collections.emptyMap();
         }
-        resourcePath = ClientUtils.urlEncode(resourcePath);
+        resourcePath = ClientUtils.base64encURL(resourcePath.getBytes());
         return invokeSyncDelete(ClientUtils.formatMessage("_permissions/{0}/{1}",
                 ClientUtils.urlEncode(subjectid), resourcePath), null, Map.class);
     }
@@ -2827,9 +2831,9 @@ public final class ParaClient {
             fail(callback, false);
             return;
         }
-        resourcePath = ClientUtils.urlEncode(resourcePath);
+        resourcePath = ClientUtils.base64encURL(resourcePath.getBytes());
         String url = ClientUtils.formatMessage("_permissions/{0}/{1}/{2}",
-                ClientUtils.urlEncode(subjectid), resourcePath, httpMethod);
+        ClientUtils.urlEncode(subjectid), resourcePath, httpMethod);
         invokeGet(url, null, String.class, new Listener<String>() {
             public void onResponse(String res) {
                 callback.onResponse(res == null ? false : Boolean.parseBoolean(res));
@@ -2843,12 +2847,13 @@ public final class ParaClient {
      * @param resourcePath resource path or object type (URL encoded)
      * @param httpMethod HTTP method name
      * @return true if allowed
-     */
+    */
     public boolean isAllowedToSync(String subjectid, String resourcePath, String httpMethod) {
         if (StringUtils.isBlank(subjectid) || StringUtils.isBlank(resourcePath) ||
                 StringUtils.isBlank(httpMethod)) {
             return false;
         }
+        resourcePath = ClientUtils.base64encURL(resourcePath.getBytes());
         String url = ClientUtils.formatMessage("_permissions/{0}/{1}/{2}",
                 ClientUtils.urlEncode(subjectid), resourcePath, httpMethod);
         return Boolean.parseBoolean(invokeSyncGet(url, null, String.class));

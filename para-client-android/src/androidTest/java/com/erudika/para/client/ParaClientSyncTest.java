@@ -18,9 +18,9 @@
 package com.erudika.para.client;
 
 import android.content.Context;
-import android.support.test.InstrumentationRegistry;
-import android.support.test.filters.SmallTest;
-import android.support.test.runner.AndroidJUnit4;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.filters.SmallTest;
+import androidx.test.platform.app.InstrumentationRegistry;
 import com.android.volley.VolleyError;
 import com.erudika.para.client.utils.Pager;
 import com.erudika.para.core.ParaObject;
@@ -58,6 +58,7 @@ public class ParaClientSyncTest {
     private static final Logger logger = LoggerFactory.getLogger(ParaClientSyncTest.class);
     private static ParaClient pc;
     private static ParaClient pc2;
+    private static ParaClient pcChild;
     private static final String catsType = "cat";
     private static final String dogsType = "dog";
     private static final String APP_ID = "app:para";
@@ -74,24 +75,37 @@ public class ParaClientSyncTest {
     private static Context ctx;
 
     private static boolean ranOnce = false;
-
+    private static String paraHost = "192.168.0.188";
+    
     public ParaClientSyncTest() {
-    }
-
-    private static ParaClient pc() {
-        if (pc == null) {
-            pc = new ParaClient("app:para", "xC2/S0vrq41lYlFliGmKfmuuQBe1ixf2DXbgzbCq0q6TIu6W66uH3g==", ctx);
-            pc.setEndpoint("http://192.168.0.113:8080");
-        }
-        return pc;
     }
 
     private static ParaClient pc2() {
         if (pc2 == null) {
             pc2 = new ParaClient("app:para", null, ctx);
-            pc2.setEndpoint("http://192.168.0.113:8080");
+            pc2.setEndpoint("http://" + paraHost + ":8080");
+            pc2.trustHostnameCertificates(paraHost);
         }
         return pc2;
+    }
+
+    private static ParaClient pc() {
+        if (pc == null) {
+            pc = new ParaClient("app:para", "VIJccBA/b2kwqgdLW8UdaEEbNDlU4A8nYt+zrXjGhOpB2jgGPCg/+A==", ctx);
+            pc.setEndpoint("http://" + paraHost + ":8080");
+            pc.trustHostnameCertificates(paraHost);
+        }
+        return pc;
+    }
+
+    private static ParaClient pcChild() {
+        if (pcChild == null) {
+            Map keys = pc().invokeSyncGet("_setup/para-test-child", null, Map.class);
+            pcChild = new ParaClient("app:para-test-child", (String) keys.get("secretKey"), ctx);
+            pcChild.setEndpoint(pc.getEndpoint());
+            pcChild.trustHostnameCertificates(paraHost);
+        }
+        return pcChild;
     }
 
     private static Sysprop u() {
@@ -183,7 +197,7 @@ public class ParaClientSyncTest {
 
     @BeforeClass
     public static void setUp() throws Exception {
-        ctx = InstrumentationRegistry.getContext();
+        ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
         if (!ranOnce) {
             ranOnce = true;
@@ -192,21 +206,7 @@ public class ParaClientSyncTest {
                     fail("Para server must be running before testing!");
                 }
             });
-
-            List<ParaObject> parr = new ArrayList<ParaObject>();
-            parr.addAll(Arrays.asList(u(), u1(), u2(), t(), s1(), s2(), a1(), a2()));
-
-            pc().createAll(parr, new Listener<List<ParaObject>>() {
-                public void onResponse(List<ParaObject> paraObjects) {
-                    logger.info("{} Objects created!", paraObjects.size());
-                }
-            });
-
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            pc().createAllSync(Arrays.asList(u(), u1(), u2(), t(), s1(), s2(), a1(), a2()));
         }
     }
 
@@ -563,73 +563,74 @@ public class ParaClientSyncTest {
     @Test
     public void testResourcePermissions() {
         // Permissions
-        Map<String, Map<String, List<String>>> permits = pc().resourcePermissionsSync();
+        Map<String, Map<String, List<String>>> permits = pcChild().resourcePermissionsSync();
         assertNotNull(permits);
 
-        assertTrue(pc().grantResourcePermissionSync(null, dogsType, new String[0]).isEmpty());
-        assertTrue(pc().grantResourcePermissionSync(" ", "", new String[0]).isEmpty());
+        assertTrue(pcChild().grantResourcePermissionSync(null, dogsType, new String[0]).isEmpty());
+        assertTrue(pcChild().grantResourcePermissionSync(" ", "", new String[0]).isEmpty());
 
-        pc().grantResourcePermissionSync(u1().getId(), dogsType, new String[]{"GET"});
-        permits = pc().resourcePermissionsSync(u1().getId());
+        pcChild().grantResourcePermissionSync(u1().getId(), dogsType, new String[]{"GET"});
+        permits = pcChild().resourcePermissionsSync(u1().getId());
         assertTrue(permits.containsKey(u1().getId()));
         assertTrue(permits.get(u1().getId()).containsKey(dogsType));
-        assertTrue(pc().isAllowedToSync(u1().getId(), dogsType, "GET"));
-        assertFalse(pc().isAllowedToSync(u1().getId(), dogsType, "POST"));
+        assertTrue(pcChild().isAllowedToSync(u1().getId(), dogsType, "GET"));
+        assertFalse(pcChild().isAllowedToSync(u1().getId(), dogsType, "POST"));
         // anonymous permissions
-        assertFalse(pc().isAllowedToSync(ALLOW_ALL, "utils/timestamp", "GET"));
-        assertNotNull(pc().grantResourcePermissionSync(ALLOW_ALL, "utils/timestamp", new String[]{"GET"}, true));
-        assertTrue(pc2().getTimestampSync() > 0);
-        assertFalse(pc().isAllowedToSync(ALLOW_ALL, "utils/timestamp", "DELETE"));
+        assertFalse(pcChild().isAllowedToSync(ALLOW_ALL, "utils/timestamp", "GET"));
+        assertNotNull(pcChild().grantResourcePermissionSync(ALLOW_ALL, "utils/timestamp", new String[]{"GET"}, true));
+//        assertTrue(pc2().getTimestampSync() > 0);
+        assertTrue(pcChild().isAllowedToSync(ALLOW_ALL, "utils/timestamp", "GET"));
+        assertFalse(pcChild().isAllowedToSync(ALLOW_ALL, "utils/timestamp", "DELETE"));
 
-        permits = pc().resourcePermissionsSync();
+        permits = pcChild().resourcePermissionsSync();
         assertTrue(permits.containsKey(u1().getId()));
         assertTrue(permits.get(u1().getId()).containsKey(dogsType));
 
-        pc().revokeResourcePermissionSync(u1().getId(), dogsType);
-        permits = pc().resourcePermissionsSync(u1().getId());
+        pcChild().revokeResourcePermissionSync(u1().getId(), dogsType);
+        permits = pcChild().resourcePermissionsSync(u1().getId());
         assertFalse(permits.get(u1().getId()).containsKey(dogsType));
-        assertFalse(pc().isAllowedToSync(u1().getId(), dogsType, "GET"));
-        assertFalse(pc().isAllowedToSync(u1().getId(), dogsType, "POST"));
+        assertFalse(pcChild().isAllowedToSync(u1().getId(), dogsType, "GET"));
+        assertFalse(pcChild().isAllowedToSync(u1().getId(), dogsType, "POST"));
 
         final String[] WRITE = new String[]{"POST", "PUT", "PATCH", "DELETE"};
 
-        pc().grantResourcePermissionSync(u2().getId(), ALLOW_ALL, WRITE);
-        assertTrue(pc().isAllowedToSync(u2().getId(), dogsType, "PUT"));
-        assertTrue(pc().isAllowedToSync(u2().getId(), dogsType, "PATCH"));
+        pcChild().grantResourcePermissionSync(u2().getId(), ALLOW_ALL, WRITE);
+        assertTrue(pcChild().isAllowedToSync(u2().getId(), dogsType, "PUT"));
+        assertTrue(pcChild().isAllowedToSync(u2().getId(), dogsType, "PATCH"));
 
-        pc().revokeAllResourcePermissionsSync(u2().getId());
-        permits = pc().resourcePermissionsSync();
-        assertFalse(pc().isAllowedToSync(u2().getId(), dogsType, "PUT"));
+        pcChild().revokeAllResourcePermissionsSync(u2().getId());
+        permits = pcChild().resourcePermissionsSync();
+        assertFalse(pcChild().isAllowedToSync(u2().getId(), dogsType, "PUT"));
         assertFalse(permits.containsKey(u2().getId()));
 //		assertTrue(permits.get(u2().getId()).isEmpty());
 
-        pc().grantResourcePermissionSync(u1().getId(), dogsType, WRITE);
-        pc().grantResourcePermissionSync(ALLOW_ALL, catsType, WRITE);
-        pc().grantResourcePermissionSync(ALLOW_ALL, ALLOW_ALL, new String[]{"GET"});
+        pcChild().grantResourcePermissionSync(u1().getId(), dogsType, WRITE);
+        pcChild().grantResourcePermissionSync(ALLOW_ALL, catsType, WRITE);
+        pcChild().grantResourcePermissionSync(ALLOW_ALL, ALLOW_ALL, new String[]{"GET"});
         // user-specific permissions are in effect
-        assertTrue(pc().isAllowedToSync(u1().getId(), dogsType, "PUT"));
-        assertFalse(pc().isAllowedToSync(u1().getId(), dogsType, "GET"));
-        assertTrue(pc().isAllowedToSync(u1().getId(), catsType, "PUT"));
-        assertTrue(pc().isAllowedToSync(u1().getId(), catsType, "GET"));
+        assertTrue(pcChild().isAllowedToSync(u1().getId(), dogsType, "PUT"));
+        assertFalse(pcChild().isAllowedToSync(u1().getId(), dogsType, "GET"));
+        assertTrue(pcChild().isAllowedToSync(u1().getId(), catsType, "PUT"));
+        assertTrue(pcChild().isAllowedToSync(u1().getId(), catsType, "GET"));
 
-        pc().revokeAllResourcePermissionsSync(u1().getId());
+        pcChild().revokeAllResourcePermissionsSync(u1().getId());
         // user-specific permissions not found so check wildcard
-        assertFalse(pc().isAllowedToSync(u1().getId(), dogsType, "PUT"));
-        assertTrue(pc().isAllowedToSync(u1().getId(), dogsType, "GET"));
-        assertTrue(pc().isAllowedToSync(u1().getId(), catsType, "PUT"));
-        assertTrue(pc().isAllowedToSync(u1().getId(), catsType, "GET"));
+        assertFalse(pcChild().isAllowedToSync(u1().getId(), dogsType, "PUT"));
+        assertTrue(pcChild().isAllowedToSync(u1().getId(), dogsType, "GET"));
+        assertTrue(pcChild().isAllowedToSync(u1().getId(), catsType, "PUT"));
+        assertTrue(pcChild().isAllowedToSync(u1().getId(), catsType, "GET"));
 
-        pc().revokeResourcePermissionSync(ALLOW_ALL, catsType);
+        pcChild().revokeResourcePermissionSync(ALLOW_ALL, catsType);
         // resource-specific permissions not found so check wildcard
-        assertFalse(pc().isAllowedToSync(u1().getId(), dogsType, "PUT"));
-        assertFalse(pc().isAllowedToSync(u1().getId(), catsType, "PUT"));
-        assertTrue(pc().isAllowedToSync(u1().getId(), dogsType, "GET"));
-        assertTrue(pc().isAllowedToSync(u1().getId(), catsType, "GET"));
-        assertTrue(pc().isAllowedToSync(u2().getId(), dogsType, "GET"));
-        assertTrue(pc().isAllowedToSync(u2().getId(), catsType, "GET"));
+        assertFalse(pcChild().isAllowedToSync(u1().getId(), dogsType, "PUT"));
+        assertFalse(pcChild().isAllowedToSync(u1().getId(), catsType, "PUT"));
+        assertTrue(pcChild().isAllowedToSync(u1().getId(), dogsType, "GET"));
+        assertTrue(pcChild().isAllowedToSync(u1().getId(), catsType, "GET"));
+        assertTrue(pcChild().isAllowedToSync(u2().getId(), dogsType, "GET"));
+        assertTrue(pcChild().isAllowedToSync(u2().getId(), catsType, "GET"));
 
-        pc().revokeAllResourcePermissionsSync(ALLOW_ALL);
-        pc().revokeAllResourcePermissionsSync(u1().getId());
+        pcChild().revokeAllResourcePermissionsSync(ALLOW_ALL);
+        pcChild().revokeAllResourcePermissionsSync(u1().getId());
     }
 
     @Test

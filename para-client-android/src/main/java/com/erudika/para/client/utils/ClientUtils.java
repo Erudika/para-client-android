@@ -173,7 +173,7 @@ public final class ClientUtils {
         if (str == null) {
             return "";
         }
-        return new String(Base64.encode(str, Base64.URL_SAFE));
+        return new String(Base64.encode(str, Base64.URL_SAFE ^ Base64.NO_WRAP));
     }
 
     /**

@@ -18,10 +18,10 @@
 package com.erudika.para.client;
 
 import android.content.Context;
-import android.support.test.InstrumentationRegistry;
-import android.support.test.filters.SmallTest;
-import android.support.test.rule.ServiceTestRule;
-import android.support.test.runner.AndroidJUnit4;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.filters.SmallTest;
+import androidx.test.rule.ServiceTestRule;
+import androidx.test.platform.app.InstrumentationRegistry;
 import static com.android.volley.Response.*;
 import com.android.volley.VolleyError;
 import com.erudika.para.client.utils.Pager;
@@ -78,6 +78,7 @@ public class ParaClientTest {
     private static Context ctx;
 
     private static boolean ranOnce = false;
+    private static String paraHost = "192.168.0.188";
 
     public ParaClientTest() {
     }
@@ -85,7 +86,8 @@ public class ParaClientTest {
     private static ParaClient pc() {
         if (pc == null) {
             pc = new ParaClient("app:para", "VIJccBA/b2kwqgdLW8UdaEEbNDlU4A8nYt+zrXjGhOpB2jgGPCg/+A==", ctx);
-            pc.setEndpoint("http://192.168.0.113:8080");
+            pc.setEndpoint("http://" + paraHost + ":8080");
+            pc.trustHostnameCertificates(paraHost);
         }
         return pc;
     }
@@ -93,7 +95,8 @@ public class ParaClientTest {
     private static ParaClient pc2() {
         if (pc2 == null) {
             pc2 = new ParaClient("app:para", null, ctx);
-            pc2.setEndpoint("http://192.168.0.113:8080");
+            pc2.setEndpoint("http://" + paraHost + ":8080");
+            pc2.trustHostnameCertificates(paraHost);
         }
         return pc2;
     }
@@ -187,7 +190,7 @@ public class ParaClientTest {
 
     @BeforeClass
     public static void setUp() throws Exception {
-        ctx = InstrumentationRegistry.getContext();
+        ctx = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
         if (!ranOnce) {
             ranOnce = true;

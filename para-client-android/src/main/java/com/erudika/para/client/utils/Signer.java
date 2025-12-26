@@ -17,27 +17,26 @@
  */
 package com.erudika.para.client.utils;
 
-import com.amazonaws.AmazonWebServiceRequest;
-import com.amazonaws.DefaultRequest;
-import com.amazonaws.auth.AWS4Signer;
-import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.http.HttpMethodName;
-import com.amazonaws.util.HttpUtils;
 import com.android.volley.Request;
 import com.android.volley.Response;
+import com.github.davidmoten.aws.lw.client.internal.auth.AwsSignatureVersion4;
+import com.github.davidmoten.aws.lw.client.internal.util.Util;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
+import java.net.URL;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
-
+import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,22 +47,18 @@ import org.slf4j.LoggerFactory;
  * compatible with the original AWS SDK implementation.
  * @author Alex Bogdanovski [alex@erudika.com]
  */
-public final class Signer extends AWS4Signer {
+public final class Signer {
 
     private static final Logger logger = LoggerFactory.getLogger(Signer.class);
-    private static final SimpleDateFormat timeFormatter =
-            new SimpleDateFormat("yyyyMMdd'T'HHmmss'Z'");
-
-    private static final String PARA = "para";
+    private static final String SERVICE_NAME = "para";
+    private static final String REGION = "us-east-1";
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.
+            ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneId.of("Z"));
 
     /**
-     * No-args constructor.
+     * If true, resource path will be URL-encoded twice for compatibility with older Para instances.
      */
-    public Signer() {
-        super(false);
-        super.setServiceName(PARA);
-    }
-
+    private static final boolean DOUBLE_URL_ENCODE = true;
     /**
      * Signs a request using AWS signature V4.
      * @param httpMethod GET/POST/PUT... etc.
@@ -76,83 +71,152 @@ public final class Signer extends AWS4Signer {
      * @param secretKey the app's secret key
      * @return a signed request. The actual signature is inside the {@code Authorization} header.
      */
-    public Map<String, String> sign(int httpMethod, String endpoint, String resourcePath,
-                    Map<String, String> headers, Map<String, String> params, InputStream entity,
-                    String accessKey, String secretKey) {
-
-        DefaultRequest<?> req = buildAWSRequest(httpMethod, endpoint, resourcePath,
-                headers, params, entity);
-        sign(req, accessKey, secretKey);
-        return req.getHeaders();
+    public Map<String, String> sign(String httpMethod, String endpoint, String resourcePath,
+                                    Map<String, String> headers, Map<String, String> params, InputStream entity,
+                                    String accessKey, String secretKey) {
+        return sign(httpMethod, endpoint, resourcePath, headers, params, entity, accessKey, secretKey,
+                SERVICE_NAME, REGION, DOUBLE_URL_ENCODE);
     }
 
     /**
      * Signs a request using AWS signature V4.
-     * @param request the request instance
+     * @param httpMethod GET/POST/PUT... etc.
+     * @param endpoint the hostname of the API server
+     * @param resourcePath the path of the resource (starting from root e.g. "/path/to/res")
+     * @param headers the headers map
+     * @param params the params map
+     * @param entity the entity object or null
      * @param accessKey the app's access key
      * @param secretKey the app's secret key
+     * @param serviceName service name override
+     * @param region region override
+     * @param doubleUrlEncodePath if true, resouce path will be double url-encoded
+     * @return a signed request. The actual signature is inside the {@code Authorization} header.
      */
-    public void sign(DefaultRequest<?> request, String accessKey, String secretKey) {
-        super.sign(request, new BasicAWSCredentials(accessKey, secretKey));
-        resetDate();
-    }
+    public Map<String, String> sign(String httpMethod, String endpoint, String resourcePath,
+                                    Map<String, String> headers, Map<String, String> params, InputStream entity,
+                                    String accessKey, String secretKey, String serviceName, String region, boolean doubleUrlEncodePath) {
 
-    @Override
-    public void setRegionName(String regionName) { }
-
-    private void resetDate() {
-        overriddenDate = null;
-    }
-
-    private DefaultRequest<?> buildAWSRequest(int httpMethod, String endpoint, String resourcePath,
-                       Map<String, String> headers, Map<String, String> params, InputStream entity) {
-
-        DefaultRequest<AmazonWebServiceRequest> r = new DefaultRequest<AmazonWebServiceRequest>(PARA);
-        String method = getMethodString(httpMethod);
-        r.setHttpMethod(HttpMethodName.valueOf(method));
-        if (!StringUtils.isBlank(endpoint)) {
-            if (!endpoint.startsWith("http")) {
-                endpoint = "https://" + endpoint;
-            }
-            r.setEndpoint(URI.create(endpoint));
-        }
-        if (!StringUtils.isBlank(resourcePath)) {
-            r.setResourcePath(resourcePath);
-        }
+        Map<String, String> headerz = new HashMap<>();
+        Map<String, String> h = Optional.ofNullable(headers).orElse(Collections.emptyMap());
+        String date = h.getOrDefault("x-amz-date", h.get("X-Amz-Date"));
+        com.github.davidmoten.aws.lw.client.internal.Clock clock
+                = () -> date != null ? parseAWSInstant(date).toEpochMilli() : Instant.now().toEpochMilli();
         if (headers != null) {
-            if (headers.containsKey("x-amz-date")) {
-                overriddenDate = parseAWSDate(headers.get("x-amz-date"));
+            headerz.putAll(headers);
+            headerz.remove("host");
+            headerz.remove("Host");
+            headerz.remove("x-amz-date");
+            headerz.remove("X-Amz-Date");
+        }
+
+        try {
+            final String contentHashString;
+            byte[] requestBody = entity == null ? null : entity.readAllBytes();
+            if (requestBody == null || requestBody.length == 0) {
+                contentHashString = AwsSignatureVersion4.EMPTY_BODY_SHA256;
+            } else {
+                contentHashString = Util.toHex(Util.sha256(requestBody));
             }
-            // we don't need these here, added by default
-            headers.remove("host");
-            headers.remove("x-amz-date");
-            r.setHeaders(headers);
+            URL endpointURL = URI.create(endpoint + urlEncodeExceptSlashes(resourcePath, doubleUrlEncodePath)).toURL();
+
+            // https://github.com/davidmoten/aws-lightweight-client-java/pull/232
+            headerz.put("Authorization", AwsSignatureVersion4.computeSignatureForAuthorizationHeader(endpointURL,
+                    httpMethod, serviceName, region, clock, headerz, params, contentHashString, accessKey, secretKey));
+            // clean up headers and normalize case
+            headerz.put("X-Amz-Date", headerz.get("x-amz-date"));
+            headerz.remove("x-amz-date");
+        } catch (Exception e) {
+            logger.info("Request signature failed: {}", e.getMessage());
         }
-        if (params != null) {
-            for (Map.Entry<String, String> param : params.entrySet()) {
-                r.addParameter(param.getKey(), param.getValue());
-            }
-        }
-        if (entity != null) {
-            r.setContent(entity);
-        }
-        return r;
+        return headerz;
     }
 
     /**
-     * Returns a parsed Date
+     * Returns a parsed Date.
      * @param date a date in the AWS format yyyyMMdd'T'HHmmss'Z'
      * @return a date
      */
     public static Date parseAWSDate(String date) {
-        if (date == null) {
+        if (StringUtils.isBlank(date)) {
             return null;
         }
-        try {
-            return timeFormatter.parse(date);
-        } catch (ParseException e) {
+        return Date.from(parseAWSInstant(date));
+    }
+
+    /**
+     * Returns a parsed Instant.
+     * @param date a date in the AWS format yyyyMMdd'T'HHmmss'Z'
+     * @return a date
+     */
+    public static Instant parseAWSInstant(String date) {
+        if (StringUtils.isBlank(date)) {
             return null;
         }
+        return LocalDateTime.from(TIME_FORMATTER.parse(date)).toInstant(ZoneOffset.UTC);
+    }
+
+    private static String urlEncodeExceptSlashes(String value, boolean doubleUrlEncode) {
+        if (value == null) {
+            return null;
+        }
+        if (doubleUrlEncode) {
+            return Util.urlEncode(value, true);
+        }
+        return value;
+    }
+
+    /**
+     * Builds and signs a request to an API endpoint using the provided credentials.
+     * @param accessKey access key
+     * @param secretKey secret key
+     * @param httpMethod the method (GET, POST...)
+     * @param endpointURL protocol://host:port
+     * @param reqPath the API resource path relative to the endpointURL
+     * @param headers headers map
+     * @param params parameters map
+     * @param jsonEntity an object serialized to JSON byte array (payload), could be null
+     * @return a map containing the "Authorization" header
+     */
+    public Map<String, String> signRequest(String accessKey, String secretKey,
+                                           String httpMethod, String endpointURL, String reqPath,
+                                           Map<String, String> headers, Map<String, List<String>> params, byte[] jsonEntity) {
+        if (headers == null) {
+            headers = new HashMap<>();
+        }
+        if (StringUtils.isBlank(accessKey)) {
+            logger.error("Blank access key: {} {}", httpMethod, reqPath);
+            return headers;
+        }
+
+        if (StringUtils.isBlank(secretKey)) {
+            logger.debug("Anonymous request: {} {}", httpMethod, reqPath);
+            headers.put("Authorization", "Anonymous " + accessKey);
+            return headers;
+        }
+
+        if (httpMethod == null) {
+            httpMethod = "GET";
+        }
+
+        InputStream in = null;
+        Map<String, String> sigParams = new HashMap<>();
+
+        if (params != null) {
+            for (Map.Entry<String, List<String>> param : params.entrySet()) {
+                String key = param.getKey();
+                List<String> value = param.getValue();
+                if (value != null && !value.isEmpty() && value.get(0) != null) {
+                    sigParams.put(key, value.get(0));
+                }
+            }
+        }
+
+        if (jsonEntity != null && jsonEntity.length > 0) {
+            in = new ByteArrayInputStream(jsonEntity);
+        }
+
+        return sign(httpMethod, endpointURL, reqPath, headers, sigParams, in, accessKey, secretKey);
     }
 
     /**
@@ -175,7 +239,7 @@ public final class Signer extends AWS4Signer {
     @SuppressWarnings("unchecked")
     public <T> ParaRequest<T> invokeSignedRequest(String accessKey, String secretKey,
             int httpMethod, String endpointURL, String reqPath,
-            Map<String, String> headers, Map<String, Object> params, T body, Class<?> type,
+            Map<String, String> headers, Map<String, List<String>> params, T body, Class<?> type,
             Response.Listener<?> success, Response.ErrorListener error) {
 
         String url = endpointURL + reqPath;
@@ -186,110 +250,22 @@ public final class Signer extends AWS4Signer {
         if (type == null) {
             type = (Class<T>) ((body != null) ? body.getClass() : Map.class);
         }
-
+        url = setQueryParameters(url, params);
         Map<String, String> signedHeaders = null;
         if (!isJWT) {
-            signedHeaders = signRequest(accessKey, secretKey, httpMethod, endpointURL, reqPath,
-                    headers, params, entity);
+            signedHeaders = signRequest(accessKey, secretKey, getMethodString(httpMethod),
+                    endpointURL, reqPath, headers, params, entity);
         }
-
         if (headers == null) {
             headers = new HashMap<String, String>();
         }
-
-        if (params != null) {
-            Map<String, List<String>> paramMap = new HashMap<String, List<String>>();
-            for (Map.Entry<String, Object> param : params.entrySet()) {
-                String key = param.getKey();
-                Object value = param.getValue();
-                if (value != null) {
-                    if (value instanceof List && !((List) value).isEmpty()) {
-                        paramMap.put(key, ((List) value));
-                    } else {
-                        paramMap.put(key, Collections.singletonList(value.toString()));
-                    }
-                }
-            }
-            queryString = getQueryString(paramMap);
-            if (!queryString.isEmpty()) {
-                url += "?" + queryString;
-            }
-        }
-
         if (isJWT) {
             headers.put("Authorization", secretKey);
         } else {
-            if (signedHeaders.containsKey("Authorization")) {
-                headers.put("Authorization", signedHeaders.get("Authorization"));
-            }
-            if (signedHeaders.containsKey("X-Amz-Date")) {
-                headers.put("X-Amz-Date", signedHeaders.get("X-Amz-Date"));
-            }
+            headers.put("Authorization", signedHeaders.get("Authorization"));
+            headers.put("X-Amz-Date", signedHeaders.get("X-Amz-Date"));
         }
-
         return new ParaRequest(httpMethod, url, headers, entity, type, success, error);
-    }
-
-    /**
-     * Builds and signs a request to an API endpoint using the provided credentials.
-     * @param accessKey access key
-     * @param secretKey secret key
-     * @param httpMethod the method (GET, POST...)
-     * @param endpointURL protocol://host:port
-     * @param reqPath the API resource path relative to the endpointURL
-     * @param headers headers map
-     * @param params parameters map
-     * @param jsonEntity an object serialized to JSON byte array (payload), could be null
-     * @return a map containing the "Authorization" header
-     */
-    public Map<String, String> signRequest(String accessKey, String secretKey,
-               int httpMethod, String endpointURL, String reqPath,
-               Map<String, String> headers, Map<String, Object> params, byte[] jsonEntity) {
-
-        if (StringUtils.isBlank(accessKey)) {
-            logger.error("Blank access key: {} {}", getMethodString(httpMethod), reqPath);
-            return headers;
-        }
-
-        if (StringUtils.isBlank(secretKey)) {
-            logger.debug("Anonymous request: {} {}", getMethodString(httpMethod), reqPath);
-            if (headers == null) {
-                headers = new HashMap<String, String>();
-            }
-            headers.put("Authorization", "Anonymous " + accessKey);
-            return headers;
-        }
-
-        if (httpMethod < 0 || httpMethod > 7) {
-            httpMethod = Request.Method.GET;
-        }
-
-        InputStream in = null;
-        Map<String, String> sigParams = new HashMap<String, String>();
-
-        if (params != null) {
-            for (Map.Entry<String, Object> param : params.entrySet()) {
-                String key = param.getKey();
-                Object value = param.getValue();
-                if (value != null) {
-                    if (value instanceof List && !((List) value).isEmpty() &&
-                            ((List) value).get(0) != null) {
-                        sigParams.put(key, ((List) value).get(0).toString());
-                    } else {
-                        sigParams.put(key, value.toString());
-                    }
-                }
-            }
-        }
-
-        if (jsonEntity != null && jsonEntity.length > 0) {
-            // For some reason AWSSDK for Android doesn't like
-            // ByteArrayInputStream to be wrapped in BufferedInputStream
-            // and throws "IOException: unable to reset stream..."
-            in = new ByteArrayInputStream(jsonEntity);
-        }
-
-        return sign(httpMethod, endpointURL, reqPath, headers, sigParams, in, accessKey, secretKey);
     }
 
     private String getMethodString(int httpMethod) {
@@ -319,27 +295,22 @@ public final class Signer extends AWS4Signer {
         }
     }
 
-    private String getQueryString(Map<String, List<String>> parameters) {
-        Map<String, List<String>> sortedParams = new TreeMap<String, List<String>>();
-        for (Map.Entry<String, List<String>> entry : parameters.entrySet()) {
-            List<String> paramValues = entry.getValue();
-            List<String> encodedValues = new ArrayList<String>(paramValues.size());
-            for (String value : paramValues) {
-                encodedValues.add(HttpUtils.urlEncode(value, false));
-            }
-            Collections.sort(encodedValues);
-            sortedParams.put(HttpUtils.urlEncode(entry.getKey(), false), encodedValues);
-        }
-        final StringBuilder result = new StringBuilder();
-        for(Map.Entry<String, List<String>> entry : sortedParams.entrySet()) {
-            for(String value : entry.getValue()) {
-                if (result.length() > 0) {
-                    result.append("&");
+    private String setQueryParameters(String uri, Map<String, List<String>> params) {
+        if (params != null) {
+            List<String> paramz = new LinkedList<>();
+            for (Map.Entry<String, List<String>> param : params.entrySet()) {
+                String key = param.getKey();
+                List<String> value = param.getValue();
+                if (value != null && !value.isEmpty() && value.get(0) != null) {
+                    for (String pv : value) {
+                        paramz.add(key + "=" + Util.urlEncode(pv, false));
+                    }
                 }
-                result.append(entry.getKey()).append("=").append(value);
+            }
+            if (!paramz.isEmpty()) {
+                uri = uri + "?" + String.join("&", paramz);
             }
         }
-        return result.toString();
+        return uri;
     }
-
 }

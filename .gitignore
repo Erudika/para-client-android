@@ -1,10 +1,14 @@
 *.iml
 .gradle
+.project
+.settings
 /local.properties
 /.idea/workspace.xml
 /.idea/libraries
 /.idea/inspectionProfiles
 .DS_Store
+.vscode
+.idea
 /build
 /captures
 .idea/caches

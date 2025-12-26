@@ -98,10 +98,14 @@ public class OkHttp3Stack extends BaseHttpStack {
 
         Map<String, String> headers = request.getHeaders();
         for(final String name : headers.keySet()) {
-            okHttpRequestBuilder.addHeader(name, headers.get(name));
+            if (headers.get(name) != null) {
+                okHttpRequestBuilder.addHeader(name, headers.get(name));
+            }
         }
         for(final String name : additionalHeaders.keySet()) {
-            okHttpRequestBuilder.addHeader(name, additionalHeaders.get(name));
+            if (additionalHeaders.get(name) != null) {
+                okHttpRequestBuilder.addHeader(name, additionalHeaders.get(name));
+            }
         }
 
         setConnectionParametersForRequest(okHttpRequestBuilder, request);
@@ -119,9 +123,7 @@ public class OkHttp3Stack extends BaseHttpStack {
         List<Header> responseHeaders = new ArrayList<Header>(okHttpResponse.headers().size());
         for(int i = 0, len = okHttpResponse.headers().size(); i < len; i++) {
             final String name = okHttpResponse.headers().name(i);
-            if (name != null) {
-                responseHeaders.add(new Header(name, okHttpResponse.headers().value(i)));
-            }
+            responseHeaders.add(new Header(name, okHttpResponse.headers().value(i)));
         }
 
         return new HttpResponse(code, responseHeaders, contentLength, content);
@@ -134,7 +136,7 @@ public class OkHttp3Stack extends BaseHttpStack {
                 // Ensure backwards compatibility.  Volley assumes a request with a null body is a GET.
                 byte[] postBody = request.getBody();
                 if (postBody != null) {
-                    builder.post(RequestBody.create(MediaType.parse(request.getBodyContentType()), postBody));
+                    builder.post(RequestBody.create(postBody, MediaType.parse(request.getBodyContentType())));
                 }
                 break;
             case Request.Method.GET:
@@ -171,6 +173,6 @@ public class OkHttp3Stack extends BaseHttpStack {
         if (body == null) {
             return null;
         }
-        return RequestBody.create(MediaType.parse(r.getBodyContentType()), body);
+        return RequestBody.create(body, MediaType.parse(r.getBodyContentType()));
     }
 }
