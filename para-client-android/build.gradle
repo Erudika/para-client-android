@@ -1,7 +1,6 @@
 plugins {
     id 'com.android.library'
-    id 'maven-publish'
-    id 'signing'
+    id 'com.vanniktech.maven.publish' version '0.35.0'
 }
 
 def gitURL = 'https://github.com/Erudika/para-client-android.git'
@@ -51,12 +50,12 @@ android {
         abortOnError = false
     }
 
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-            withJavadocJar()
-        }
-    }
+    // publishing {
+    //     singleVariant("release") {
+    //         withSourcesJar()
+    //         withJavadocJar()
+    //     }
+    // }
 }
 
 dependencies {
@@ -101,73 +100,15 @@ dependencies {
 //     exclude 'com.fasterxml.jackson.dataformat:jackson-dataformat-cbor'
 // }
 
-publishing {
-    publications {
-        register('release', MavenPublication) {
-            groupId = project.group
-            artifactId = 'para-client-android'
-            version = project.version
-
-            pom {
-                packaging = 'aar'
-                name = 'para-client-android'
-                description = 'Android client library for Para'
-                url = 'https://paraio.org'
-                licenses {
-                    license {
-                        name = 'The Apache Software License, Version 2.0'
-                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                    }
-                }
-                developers {
-                    developer {
-                        id = 'albogdano'
-                        name = 'Alex Bogdanovski'
-                        email = 'alex@erudika.com'
-                    }
-                }
-                scm {
-                    connection = gitURL
-                    developerConnection = gitURL
-                    url = 'https://github.com/Erudika/para-client-android'
-                }
-            }
-
-            // afterEvaluate {
-            //     from components.release
-            // }
-        }
-    }
-
-    repositories {
-        // def publishUrl = providers.gradleProperty("erudika.publishUrl")
-        //         .orElse(providers.environmentVariable("ERUDIKA_PUBLISH_URL"))
-        maven {
-            name = "central"
-            url = uri("https://repo.maven.apache.org/maven2/")
-            credentials {
-                username = providers.gradleProperty("erudika.publishUser")
-                        .orElse(providers.environmentVariable("MAVEN_PUBLISH_USER"))
-                        .orNull
-                password = providers.gradleProperty("erudika.publishPassword")
-                        .orElse(providers.environmentVariable("MAVEN_PUBLISH_PASS"))
-                        .orNull
-            }
-        }
-    }
+mavenPublishing {
+    publishToMavenCentral(true)
+    signAllPublications()
+    coordinates("com.erudika", "para-client-android", paraVer)
 }
 
 signing {
     useGpgCmd()
     sign publishing.publications
-    // def signingKey = providers.gradleProperty("erudika.signingKey")
-    //         .orElse(providers.environmentVariable("ERUDIKA_SIGNING_KEY"))
-    // def signingPassword = providers.gradleProperty("erudika.signingPassword")
-    //         .orElse(providers.environmentVariable("ERUDIKA_SIGNING_PASSWORD"))
-    // if (signingKey.isPresent() && signingPassword.isPresent()) {
-    //     useInMemoryPgpKeys(signingKey.get(), signingPassword.get())
-    //     sign publishing.publications
-    // }
 }
 
 tasks.withType(JavaCompile).configureEach {

@@ -1,7 +1,7 @@
 ![Logo](https://s3-eu-west-1.amazonaws.com/org.paraio/para.png)
 
 # Android Client for Para
-[ ![Download](https://api.bintray.com/packages/erudika/releases/para-client-android/images/download.svg) ](https://bintray.com/erudika/releases/para-client-android/_latestVersion)
+[![Maven Central Version](https://img.shields.io/maven-central/v/com.erudika/para-client-android)](https://central.sonatype.com/artifact/com.erudika/para-client-android)
 [![Join the chat at https://gitter.im/Erudika/para](https://badges.gitter.im/Erudika/para.svg)](https://gitter.im/Erudika/para?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 ## What is this?
@@ -11,16 +11,16 @@ It helps you build applications faster by taking care of the backend. It works o
 objects are stored in a NoSQL data store or any old relational database, then automatically indexed
 by a search engine and finally, cached.
 
-This is the Android client for Para. Works with Android KitKat+ (API level 19 or later).
+This is the Android client for Para. Works with Android 8.0 (API level 26) or later, and is tested with targetSdkVersion 34.
 
 ### Quick start
 
 1. Use Maven or Gradle and include `para-client-android` as a 
 dependency to your project.
 
-```
+```gradle
 dependencies {
-    compile 'com.erudika:para-client-android:+'
+    implementation 'com.erudika:para-client-android:1.34.0'
 }
 ```
 
